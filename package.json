@@ -1,0 +1,23 @@
+{
+	"name": "scripts-package",
+	"version": "1.0.0",
+	"scripts": {
+		"clean": "rimraf scripts _temp_mcpack_directory addon.mcpack",
+		"build": "pnpm run clean && node esbuild.cjs",
+		"watch": "pnpm run clean && node esbuild.cjs --watch",
+		"build-mcpack": "pnpm run build && node build-mcpack.cjs"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "MIT",
+	"packageManager": "pnpm@10.15.0",
+	"devDependencies": {
+		"@minecraft/server": "2.2.0",
+		"@minecraft/server-ui": "2.0.0",
+		"@minecraft/vanilla-data": "1.21.111",
+		"archiver": "^7.0.1",
+		"esbuild": "^0.25.10",
+		"rimraf": "^6.0.1",
+		"typescript": "^5.9.3"
+	}
+}

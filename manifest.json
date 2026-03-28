@@ -1,0 +1,52 @@
+{
+	"format_version": 2,
+	"header": {
+		"description": "Made with moderate amounts of care by SunnyTheFennec \"xskt\".",
+		"name": "Gametest Starter Addon",
+		"uuid": "f15047db-ad9d-4dc8-9b5e-88bcaa0666df",
+		"version": [
+			1,
+			0,
+			0
+		],
+		"min_engine_version": [
+			1,
+			21,
+			111
+		]
+	},
+	"modules": [
+		{
+			"description": "Addon Module",
+			"type": "data",
+			"uuid": "335a6ee7-c060-426b-bee1-28752ed2e6f8",
+			"version": [
+				1,
+				0,
+				0
+			]
+		},
+		{
+			"description": "Scripting Module",
+			"type": "script",
+			"language": "javascript",
+			"uuid": "785762b9-6e55-46a3-bc2f-ec983a3927e2",
+			"version": [
+				1,
+				0,
+				0
+			],
+			"entry": "scripts/index.esm.js"
+		}
+	],
+	"dependencies": [
+		{
+			"module_name": "@minecraft/server",
+			"version": "2.2.0"
+		},
+		{
+			"module_name": "@minecraft/server-ui",
+			"version": "2.0.0"
+		}
+	]
+}

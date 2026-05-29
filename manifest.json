@@ -1,9 +1,9 @@
 {
 	"format_version": 2,
 	"header": {
-		"description": "Made with moderate amounts of care by SunnyTheFennec \"xskt\".",
-		"name": "Gametest Starter Addon",
-		"uuid": "f15047db-ad9d-4dc8-9b5e-88bcaa0666df",
+		"description": "By Frogzalcoatl. With major help from SunnyTheFennec \"xskt\".",
+		"name": "Kill Tracker",
+		"uuid": "3edcbea8-dc54-4a59-ac91-5cc045397fdf",
 		"version": [
 			1,
 			0,
@@ -17,20 +17,10 @@
 	},
 	"modules": [
 		{
-			"description": "Addon Module",
-			"type": "data",
-			"uuid": "335a6ee7-c060-426b-bee1-28752ed2e6f8",
-			"version": [
-				1,
-				0,
-				0
-			]
-		},
-		{
-			"description": "Scripting Module",
+			"description": "Kill Tracker Module",
 			"type": "script",
 			"language": "javascript",
-			"uuid": "785762b9-6e55-46a3-bc2f-ec983a3927e2",
+			"uuid": "ef17739e-d0b5-4459-a8cf-fed4fe5e206a",
 			"version": [
 				1,
 				0,
@@ -42,7 +32,7 @@
 	"dependencies": [
 		{
 			"module_name": "@minecraft/server",
-			"version": "2.2.0"
+			"version": "2.7.0"
 		},
 		{
 			"module_name": "@minecraft/server-ui",

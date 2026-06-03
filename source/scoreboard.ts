@@ -46,6 +46,7 @@ export interface ResultWithMessage {
 	message: string;
 }
 
+// oldObjectiveName only needed if changing objective name
 function reloadScoreboard(sbData: ScoreboardData, oldObjectiveName?: string): ResultWithMessage {
 	if (!sbData.objective) {
 		return {
@@ -54,22 +55,16 @@ function reloadScoreboard(sbData: ScoreboardData, oldObjectiveName?: string): Re
 		};
 	}
 
-	let isbelowName: boolean = false;
-	const belowName = world.scoreboard.getObjectiveAtDisplaySlot(DisplaySlotId.BelowName);
-	if (belowName && belowName.objective.id === sbData.objective.id) {
-		isbelowName = true;
+	const isOnDisplay: Record<DisplaySlotId, boolean> = {
+		BelowName: false,
+		List: false,
+		Sidebar: false
 	}
-
-	let isList: boolean = false;
-	const list = world.scoreboard.getObjectiveAtDisplaySlot(DisplaySlotId.List);
-	if (list && list.objective.id === sbData.objective.id) {
-		isList = true;
-	}
-
-	let isSidebar: boolean = false;
-	const sidebar = world.scoreboard.getObjectiveAtDisplaySlot(DisplaySlotId.Sidebar);
-	if (sidebar && sidebar.objective.id === sbData.objective.id) {
-		isSidebar = true;
+	for (const displayId of Object.values(DisplaySlotId)) {
+		const objectiveOnDisplay = world.scoreboard.getObjectiveAtDisplaySlot(displayId);
+		if (objectiveOnDisplay && objectiveOnDisplay.objective.id === sbData.objective.id) {
+			isOnDisplay[displayId] = true;
+		}
 	}
 
 	const scoresBackup = sbData.objective.getScores();
@@ -86,21 +81,10 @@ function reloadScoreboard(sbData: ScoreboardData, oldObjectiveName?: string): Re
 		sbData.objective.setScore(score.participant, score.score);
 	}
 
-	if (isbelowName) {
-		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.BelowName, {
-			objective: sbData.objective,
-		});
+	for (const displayId of Object.values(DisplaySlotId)) {
+		world.scoreboard.setObjectiveAtDisplaySlot(displayId, { objective: sbData.objective });
 	}
-	if (isList) {
-		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.List, {
-			objective: sbData.objective,
-		});
-	}
-	if (isSidebar) {
-		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, {
-			objective: sbData.objective,
-		});
-	}
+
 	return {
 		bool: true,
 		message: `${sbData.objectiveName} reload successful`,

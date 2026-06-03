@@ -1,5 +1,21 @@
-import { CommandPermissionLevel, CustomCommand, CustomCommandOrigin, CustomCommandParamType, CustomCommandResult, CustomCommandStatus, Player, system, world } from "@minecraft/server";
-import { ResultWithMessage, SCOREBOARD_DATA, ScoreboardData, setScoreboardDisplayName, setScoreboardObjectiveName } from "./scoreboard";
+import {
+	CommandPermissionLevel,
+	type CustomCommand,
+	type CustomCommandOrigin,
+	CustomCommandParamType,
+	type CustomCommandResult,
+	CustomCommandStatus,
+	type Player,
+	system,
+	world,
+} from "@minecraft/server";
+import {
+	type ResultWithMessage,
+	SCOREBOARD_DATA,
+	type ScoreboardData,
+	setScoreboardDisplayName,
+	setScoreboardObjectiveName,
+} from "./scoreboard";
 
 function handleCommandResult(origin: CustomCommandOrigin, result: ResultWithMessage): void {
 	if (!world.gameRules.sendCommandFeedback) {
@@ -17,87 +33,83 @@ function handleCommandResult(origin: CustomCommandOrigin, result: ResultWithMess
 	}
 }
 
-const COMMANDS = new Array<{ command: CustomCommand, callback: (origin: CustomCommandOrigin, ...args: any[]) => CustomCommandResult | undefined }>();
+const COMMANDS: {
+	command: CustomCommand;
+	// biome-ignore lint/suspicious/noExplicitAny: Is easier fr. Also is what mojang uses
+	callback: (origin: CustomCommandOrigin, ...args: any[]) => CustomCommandResult | undefined;
+}[] = [];
 
 // If last hit occurred in less time, counts as kill
-export let COMBAT_TIME_MS: number = 7000;
+export let CombatTimeMs: number = 7000;
 export const COMBAT_TIME_DYNAMIC_PROPERTY = "fkt:combat_cooldown_ms";
 
 world.afterEvents.worldLoad.subscribe(() => {
 	const dynamicProperty = world.getDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY);
 	if (typeof dynamicProperty !== "number") {
-		world.setDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY, COMBAT_TIME_MS);
+		world.setDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY, CombatTimeMs);
 	} else {
-		COMBAT_TIME_MS = dynamicProperty;
+		CombatTimeMs = dynamicProperty;
 	}
 });
 
-
-
 COMMANDS.push({
-	command: {
-		cheatsRequired: true,
-		description: "Set hit cooldown time (seconds)",
-		optionalParameters: [{
-			name: "cooldownSeconds",
-			type: CustomCommandParamType.Float
-		}],
-		name: "fkt:setcooldown",
-		permissionLevel: CommandPermissionLevel.GameDirectors
-	},
-	callback: (origin: CustomCommandOrigin, cooldownSeconds?: number): CustomCommandResult | undefined => {
+	callback: (
+		origin: CustomCommandOrigin,
+		cooldownSeconds?: number,
+	): CustomCommandResult | undefined => {
 		if (cooldownSeconds === undefined) {
 			return {
+				message: `Combat cooldown currently set to ${CombatTimeMs / 1000} seconds`,
 				status: CustomCommandStatus.Success,
-				message: `Combat cooldown currently set to ${COMBAT_TIME_MS / 1000} seconds`
 			};
 		}
 		if (cooldownSeconds < 0) {
 			return {
+				message: "Combat cooldown must be at least 0 seconds",
 				status: CustomCommandStatus.Failure,
-				message: "Combat cooldown must be at least 0 seconds"
 			};
 		}
 
-		const cooldownMS = Math.floor(cooldownSeconds * 1000);
-		COMBAT_TIME_MS = cooldownMS;
-		cooldownSeconds = cooldownMS / 1000; // for rounding in return message
+		const cooldownMs = Math.floor(cooldownSeconds * 1000);
+		CombatTimeMs = cooldownMs;
+		cooldownSeconds = cooldownMs / 1000; // for rounding in return message
 		world.setDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY, Math.floor(cooldownSeconds * 1000));
 
 		return {
+			message: `Set combat cooldown to ${cooldownSeconds} seconds`,
 			status: CustomCommandStatus.Success,
-			message: `Set combat cooldown to ${cooldownSeconds} seconds`
 		};
-	}
+	},
+	command: {
+		cheatsRequired: true,
+		description: "Set hit cooldown time (seconds).",
+		name: "fkt:setcooldown",
+		optionalParameters: [
+			{
+				name: "cooldownSeconds",
+				type: CustomCommandParamType.Float,
+			},
+		],
+		permissionLevel: CommandPermissionLevel.GameDirectors,
+	},
 });
 
 enum CustomCommandObjective {
 	Kills = "kills",
-	Deaths = "deaths"
-};
+	Deaths = "deaths",
+}
 enum CustomCommandEdit {
 	SetObjective = "setobjective",
-	SetDisplay = "setdisplay"
-};
+	SetDisplay = "setdisplay",
+}
 
 COMMANDS.push({
-	command: {
-		cheatsRequired: true,
-		description: "Edit scoreboard properties.",
-		mandatoryParameters: [{
-			name: "fkt:objective",
-			type: CustomCommandParamType.Enum
-		}, {
-			name: "fkt:edit",
-			type: CustomCommandParamType.Enum
-		}, {
-			name: "newName",
-			type: CustomCommandParamType.String
-		}],
-		name: "fkt:config",
-		permissionLevel: CommandPermissionLevel.GameDirectors
-	},
-	callback: (origin: CustomCommandOrigin, objective: string, edit: string, newName: string): CustomCommandResult | undefined => {
+	callback: (
+		origin: CustomCommandOrigin,
+		objective: string,
+		edit: string,
+		newName: string,
+	): CustomCommandResult | undefined => {
 		let result: ResultWithMessage;
 
 		let scoreboardData: ScoreboardData;
@@ -107,8 +119,8 @@ COMMANDS.push({
 			scoreboardData = SCOREBOARD_DATA.deaths;
 		} else {
 			return {
+				message: `Invalid objective argument "${objective}"`,
 				status: CustomCommandStatus.Failure,
-				message: `Invalid objective argument "${objective}"`
 			};
 		}
 
@@ -120,7 +132,7 @@ COMMANDS.push({
 			} else {
 				result = {
 					bool: false,
-					message: `Invalid edit argument "${edit}"`
+					message: `Invalid edit argument "${edit}"`,
 				};
 			}
 
@@ -129,13 +141,33 @@ COMMANDS.push({
 		});
 
 		return undefined;
-	}
+	},
+	command: {
+		cheatsRequired: true,
+		description: "Edit scoreboard properties.",
+		mandatoryParameters: [
+			{
+				name: "fkt:objective",
+				type: CustomCommandParamType.Enum,
+			},
+			{
+				name: "fkt:edit",
+				type: CustomCommandParamType.Enum,
+			},
+			{
+				name: "newName",
+				type: CustomCommandParamType.String,
+			},
+		],
+		name: "fkt:config",
+		permissionLevel: CommandPermissionLevel.GameDirectors,
+	},
 });
 
-system.beforeEvents.startup.subscribe(e => {
+system.beforeEvents.startup.subscribe((e) => {
 	e.customCommandRegistry.registerEnum("fkt:objective", Object.values(CustomCommandObjective));
 	e.customCommandRegistry.registerEnum("fkt:edit", Object.values(CustomCommandEdit));
-	COMMANDS.forEach(c => {
-		e.customCommandRegistry.registerCommand(c.command, c.callback)
-	});
-})
+	for (const c of COMMANDS) {
+		e.customCommandRegistry.registerCommand(c.command, c.callback);
+	}
+});

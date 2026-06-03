@@ -1,4 +1,4 @@
-import { DisplaySlotId, ScoreboardObjective, world } from "@minecraft/server";
+import { DisplaySlotId, type ScoreboardObjective, world } from "@minecraft/server";
 
 export interface ScoreboardData {
 	objectiveName: string;
@@ -8,25 +8,25 @@ export interface ScoreboardData {
 }
 
 export enum PackScoreboardNames {
-	kills = "kills",
-	deaths = "deaths"
+	Kills = "kills",
+	Deaths = "deaths",
 }
 
 export const SCOREBOARD_DATA: Record<PackScoreboardNames, ScoreboardData> = {
-	kills: {
-		objectiveName: "FKT_Kills",
-		displayName: "Kills",
-		objectiveDynamicPropertyId: "FKT_Kills"
-	},
 	deaths: {
-		objectiveName: "FKT_Deaths",
 		displayName: "Deaths",
-		objectiveDynamicPropertyId: "FKT_Deaths"
-	}
-}
+		objectiveDynamicPropertyId: "FKT_Deaths",
+		objectiveName: "FKT_Deaths",
+	},
+	kills: {
+		displayName: "Kills",
+		objectiveDynamicPropertyId: "FKT_Kills",
+		objectiveName: "FKT_Kills",
+	},
+};
 
 export function initScoreboardData(sbData: ScoreboardData): ScoreboardObjective {
-	let objectiveNameProperty = world.getDynamicProperty(sbData.objectiveDynamicPropertyId);
+	const objectiveNameProperty = world.getDynamicProperty(sbData.objectiveDynamicPropertyId);
 
 	if (typeof objectiveNameProperty !== "string") {
 		world.setDynamicProperty(sbData.objectiveDynamicPropertyId, sbData.objectiveName);
@@ -34,8 +34,10 @@ export function initScoreboardData(sbData: ScoreboardData): ScoreboardObjective 
 		sbData.objectiveName = objectiveNameProperty;
 	}
 
-	sbData.objective = world.scoreboard.getObjective(sbData.objectiveName) ??
+	sbData.objective =
+		world.scoreboard.getObjective(sbData.objectiveName) ??
 		world.scoreboard.addObjective(sbData.objectiveName, sbData.displayName);
+	sbData.displayName = sbData.objective.displayName;
 	return sbData.objective;
 }
 
@@ -48,7 +50,7 @@ function reloadScoreboard(sbData: ScoreboardData, oldObjectiveName?: string): Re
 	if (!sbData.objective) {
 		return {
 			bool: false,
-			message: `sbData.objective is undefined`
+			message: `sbData.objective is undefined`,
 		};
 	}
 
@@ -75,7 +77,7 @@ function reloadScoreboard(sbData: ScoreboardData, oldObjectiveName?: string): Re
 	if (!result) {
 		return {
 			bool: false,
-			message: `Failed to remove old objective`
+			message: `Failed to remove old objective`,
 		};
 	}
 
@@ -85,21 +87,30 @@ function reloadScoreboard(sbData: ScoreboardData, oldObjectiveName?: string): Re
 	}
 
 	if (isbelowName) {
-		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.BelowName, { objective: sbData.objective });
+		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.BelowName, {
+			objective: sbData.objective,
+		});
 	}
 	if (isList) {
-		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.List, { objective: sbData.objective });
+		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.List, {
+			objective: sbData.objective,
+		});
 	}
 	if (isSidebar) {
-		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, { objective: sbData.objective });
+		world.scoreboard.setObjectiveAtDisplaySlot(DisplaySlotId.Sidebar, {
+			objective: sbData.objective,
+		});
 	}
 	return {
 		bool: true,
-		message: `${sbData.objectiveName} reload successful`
+		message: `${sbData.objectiveName} reload successful`,
 	};
 }
 
-export function setScoreboardDisplayName(sbData: ScoreboardData, newDisplayName: string): ResultWithMessage {
+export function setScoreboardDisplayName(
+	sbData: ScoreboardData,
+	newDisplayName: string,
+): ResultWithMessage {
 	if (!sbData.objective) {
 		initScoreboardData(sbData);
 	}
@@ -111,18 +122,21 @@ export function setScoreboardDisplayName(sbData: ScoreboardData, newDisplayName:
 	if (result.bool) {
 		return {
 			bool: true,
-			message: `Set objective ${sbData.objectiveName} display name to ${newDisplayName}`
+			message: `Set objective ${sbData.objectiveName} display name to ${newDisplayName}`,
 		};
 	} else {
 		sbData.displayName = oldDisplayName;
 		return {
 			bool: false,
-			message: `Unable to set objective ${sbData.objectiveName} display name to ${newDisplayName}. ${result.message}`
-		}
+			message: `Unable to set objective ${sbData.objectiveName} display name to ${newDisplayName}. ${result.message}`,
+		};
 	}
 }
 
-export function setScoreboardObjectiveName(sbData: ScoreboardData, newObjectiveName: string): ResultWithMessage {
+export function setScoreboardObjectiveName(
+	sbData: ScoreboardData,
+	newObjectiveName: string,
+): ResultWithMessage {
 	if (!sbData.objective) {
 		initScoreboardData(sbData);
 	}
@@ -135,13 +149,13 @@ export function setScoreboardObjectiveName(sbData: ScoreboardData, newObjectiveN
 		world.setDynamicProperty(sbData.objectiveDynamicPropertyId, sbData.objectiveName);
 		return {
 			bool: true,
-			message: `Changed objective name ${oldObjectiveName} to ${newObjectiveName}`
+			message: `Changed objective name ${oldObjectiveName} to ${newObjectiveName}`,
 		};
 	} else {
 		sbData.objectiveName = oldObjectiveName;
 		return {
 			bool: false,
-			message: `Unable to change objective ${sbData.objectiveName} to ${newObjectiveName}. ${result.message}`
-		}
+			message: `Unable to change objective ${sbData.objectiveName} to ${newObjectiveName}. ${result.message}`,
+		};
 	}
 }

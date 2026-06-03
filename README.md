@@ -17,13 +17,13 @@ Includes an optional hit cooldown. If a player(1) dies within a set amount of ti
 	Change the scoreboard objective or display name.
 
 ## How to Access Scoreboard Objectives
-Scoreboards are a feature built into Minecraft and can be accessed using the /scoreboard command.
-
-For example, to show the kills objective as a sidebar:
+Scoreboards are a feature built into Minecraft and can be accessed using the /scoreboard command. For example, to show the kills objective as a sidebar:
 ```
 /scoreboard objectives setdisplay sidebar FKT_Kills
 ```
 (Given you havent changed the kills objective name from the default FKT_Kills)
+
+For more information on scoreboards, see [Microsoft's Official Documentation](https://learn.microsoft.com/en-us/minecraft/creator/documents/scoreboardintroduction?view=minecraft-bedrock-stable).
 
 ## Known issues
 Kills caused by pets are not counted. This is bc mojang is ah and their tameable property doesn't work as of May 2026. If this is fixed, or I realize I simply implemented it wrong, I will fix.

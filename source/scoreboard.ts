@@ -82,7 +82,9 @@ function reloadScoreboard(sbData: ScoreboardData, oldObjectiveName?: string): Re
 	}
 
 	for (const displayId of Object.values(DisplaySlotId)) {
-		world.scoreboard.setObjectiveAtDisplaySlot(displayId, { objective: sbData.objective });
+		if (isOnDisplay[displayId]) {
+			world.scoreboard.setObjectiveAtDisplaySlot(displayId, { objective: sbData.objective });
+		}
 	}
 
 	return {

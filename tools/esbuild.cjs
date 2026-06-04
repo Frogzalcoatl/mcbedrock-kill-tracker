@@ -1,19 +1,21 @@
+// biome-ignore-all lint/suspicious/noConsole: intended logging
+
 const esbuild = require("esbuild");
 const args = process.argv.slice(2);
 const isWatch = args.includes("--watch");
 
 const options = {
-	entryPoints: ["./source/index.ts"],
 	bundle: true,
-	sourcemap: true,
-	sourcesContent: false,
+	entryPoints: ["./source/index.ts"],
+	external: ["@minecraft/server", "@minecraft/server-ui"],
+	format: "esm",
 	logLevel: "info",
 	minify: false,
-	format: "esm",
-	target: "es2023",
 	outfile: "scripts/index.esm.js",
 	platform: "neutral",
-	external: ["@minecraft/server", "@minecraft/server-ui"]
+	sourcemap: false,
+	sourcesContent: false,
+	target: "es2023",
 };
 
 (async () => {

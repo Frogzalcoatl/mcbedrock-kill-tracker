@@ -1,12 +1,16 @@
-const fs = require("fs");
-const path = require("path");
-const archiver = require("archiver");
+// biome-ignore-all lint/suspicious/noConsole: intended logging
+
+const fs = require("node:fs");
+const path = require("node:path");
+const { ZipArchive } = require("archiver");
 
 const MCPACK_FILENAME = "addon.mcpack";
 const OUTPUT_DIRECTORY_NAME = "_temp_mcpack_directory";
-const OUTPUT_DIRECTORY_PATH = path.join(__dirname, OUTPUT_DIRECTORY_NAME);
 
-const SKIP_DIRECTORIES = [".vscode", "node_modules", "source", OUTPUT_DIRECTORY_NAME];
+const PROJECT_ROOT = path.resolve(__dirname, "..");
+const OUTPUT_DIRECTORY_PATH = path.join(PROJECT_ROOT, OUTPUT_DIRECTORY_NAME);
+
+const SKIP_DIRECTORIES = [".vscode", "node_modules", "source", "tools", OUTPUT_DIRECTORY_NAME];
 const SKIP_FILES = [
 	"build-mcpack.cjs",
 	"esbuild.cjs",
@@ -14,7 +18,7 @@ const SKIP_FILES = [
 	"pnpm-lock.yaml",
 	"pnpm-workspace.yaml",
 	"tsconfig.json",
-	MCPACK_FILENAME
+	MCPACK_FILENAME,
 ];
 
 async function copyDirectory(source, destination) {
@@ -36,7 +40,7 @@ async function copyDirectory(source, destination) {
 async function createZip(sourceDir, outputFilePath) {
 	return new Promise((resolve, reject) => {
 		const output = fs.createWriteStream(outputFilePath);
-		const archive = archiver("zip", { zlib: { level: 9 } });
+		const archive = new ZipArchive({ zlib: { level: 9 } });
 
 		output.on("close", resolve);
 		archive.on("error", reject);
@@ -49,23 +53,25 @@ async function createZip(sourceDir, outputFilePath) {
 
 async function build() {
 	try {
-		await fs.promises.rm(OUTPUT_DIRECTORY_PATH, { recursive: true, force: true }).catch(() => { });
+		await fs.promises
+			.rm(OUTPUT_DIRECTORY_PATH, { force: true, recursive: true })
+			.catch(() => {});
 
-		console.log(`Starting build in: ${__dirname}`);
+		console.log(`Starting build in: ${PROJECT_ROOT}`);
 		console.log("Cleaning up old output directory...");
-		await fs.promises.rm(OUTPUT_DIRECTORY_PATH, { recursive: true, force: true });
+		await fs.promises.rm(OUTPUT_DIRECTORY_PATH, { force: true, recursive: true });
 
 		console.log(`Creating temporary directory at: ${OUTPUT_DIRECTORY_PATH}`);
-		await copyDirectory(__dirname, OUTPUT_DIRECTORY_PATH);
+		await copyDirectory(PROJECT_ROOT, OUTPUT_DIRECTORY_PATH);
 		console.log("Successfully copied files.");
 
-		const zipFilePath = path.join(__dirname, MCPACK_FILENAME);
+		const zipFilePath = path.join(PROJECT_ROOT, MCPACK_FILENAME);
 		console.log(`Zipping contents to ${MCPACK_FILENAME}...`);
 		await createZip(OUTPUT_DIRECTORY_PATH, zipFilePath);
 		console.log("Successfully created addon.mcpack.");
 
 		console.log("Deleting temporary output directory...");
-		await fs.promises.rm(OUTPUT_DIRECTORY_PATH, { recursive: true, force: true });
+		await fs.promises.rm(OUTPUT_DIRECTORY_PATH, { force: true, recursive: true });
 		console.log("Cleanup complete.");
 
 		console.log("\nBuild finished successfully!");

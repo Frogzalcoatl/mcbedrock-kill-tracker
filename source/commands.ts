@@ -59,7 +59,7 @@ COMMANDS.push({
 	): CustomCommandResult | undefined => {
 		if (cooldownSeconds === undefined) {
 			return {
-				message: `Combat cooldown currently set to ${CombatTimeMs / 1000} seconds`,
+				message: `Combat cooldown currently set to ${CombatTimeMs / 1000} second${CombatTimeMs / 1000 === 1 ? "" : "s"}`,
 				status: CustomCommandStatus.Success,
 			};
 		}
@@ -76,7 +76,7 @@ COMMANDS.push({
 		world.setDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY, Math.floor(cooldownSeconds * 1000));
 
 		return {
-			message: `Set combat cooldown to ${cooldownSeconds} seconds`,
+			message: `Set combat cooldown to ${cooldownSeconds} second${cooldownSeconds === 1 ? "" : "s"}`,
 			status: CustomCommandStatus.Success,
 		};
 	},

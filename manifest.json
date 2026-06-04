@@ -1,42 +1,26 @@
 {
-	"format_version": 2,
-	"header": {
-		"description": "By Frogzalcoatl. With major help from SunnyTheFennec \"xskt\".",
-		"name": "Kill Tracker",
-		"uuid": "3edcbea8-dc54-4a59-ac91-5cc045397fdf",
-		"version": [
-			1,
-			0,
-			0
-		],
-		"min_engine_version": [
-			1,
-			26,
-			21
-		]
-	},
-	"modules": [
-		{
-			"description": "Kill Tracker Module",
-			"type": "script",
-			"language": "javascript",
-			"uuid": "ef17739e-d0b5-4459-a8cf-fed4fe5e206a",
-			"version": [
-				1,
-				0,
-				0
-			],
-			"entry": "scripts/index.esm.js"
-		}
-	],
 	"dependencies": [
 		{
 			"module_name": "@minecraft/server",
 			"version": "2.7.0"
-		},
+		}
+	],
+	"format_version": 2,
+	"header": {
+		"description": "By Frogzalcoatl. With major help from SunnyTheFennec \"xskt\".",
+		"min_engine_version": [1, 26, 21],
+		"name": "Kill Tracker",
+		"uuid": "3edcbea8-dc54-4a59-ac91-5cc045397fdf",
+		"version": [1, 0, 0]
+	},
+	"modules": [
 		{
-			"module_name": "@minecraft/server-ui",
-			"version": "2.0.0"
+			"description": "Scripting Module",
+			"entry": "scripts/index.esm.js",
+			"language": "javascript",
+			"type": "script",
+			"uuid": "ef17739e-d0b5-4459-a8cf-fed4fe5e206a",
+			"version": [1, 0, 0]
 		}
 	]
 }

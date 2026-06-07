@@ -5,13 +5,14 @@ import {
 	EntityComponentTypes,
 	EntityDamageCause,
 	type EntityTameableComponent,
+	Player,
 	system,
 	world,
 } from "@minecraft/server";
 import { DYNAMIC_PROPERTIES } from "./dynamicProperties";
 import { DeathsManager, KillsManager, MobManager } from "./scoreboard";
 import "./commands";
-import { removeNamespaceAndUnderscores } from "./bootifulTypeId";
+import { removeNamespaceAndUnderscores } from "./bootifulTypeIds";
 import { ENUMS } from "./enums";
 
 // Last player in combat with, timestamp of last hit
@@ -54,7 +55,7 @@ world.afterEvents.entityDie.subscribe((e) => {
 	) {
 		return;
 	}
-	if (e.deadEntity.typeId === "minecraft:player") {
+	if (e.deadEntity instanceof Player) {
 		DeathsManager.incrememntScore(e.deadEntity);
 	} else if (
 		DYNAMIC_PROPERTIES.mobInclusionMode.value !== ENUMS.mobInclusionMode.nameTagOnly &&

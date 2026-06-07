@@ -5,7 +5,7 @@ import {
 	CustomCommandParamType,
 	type CustomCommandResult,
 	CustomCommandStatus,
-	type Player,
+	Player,
 	system,
 	world,
 } from "@minecraft/server";
@@ -14,6 +14,7 @@ import { ENUMS } from "./enums";
 import {
 	DeathsManager,
 	KillsManager,
+	MobManager,
 	type ResultWithMessage,
 	type ScoreboardManager,
 } from "./scoreboard";
@@ -23,10 +24,10 @@ function handleCommandResult(origin: CustomCommandOrigin, result: CustomCommandR
 		return;
 	}
 	let player: Player | undefined;
-	if (origin.sourceEntity && origin.sourceEntity.typeId === "minecraft:player") {
-		player = origin.sourceEntity as Player;
-	} else if (origin.initiator && origin.initiator.typeId === "minecraft:player") {
-		player = origin.initiator as Player;
+	if (origin.sourceEntity instanceof Player) {
+		player = origin.sourceEntity;
+	} else if (origin.initiator instanceof Player) {
+		player = origin.initiator;
 	}
 	if (player) {
 		player.sendMessage(
@@ -201,25 +202,28 @@ COMMANDS.push({
 });
 
 COMMANDS.push({
-	callback: (origin: CustomCommandOrigin, clearMode: string): CustomCommandResult | undefined => {
-		if (!Object.values(ENUMS.resetMode).includes(clearMode)) {
+	callback: (origin: CustomCommandOrigin, resetMode: string): CustomCommandResult | undefined => {
+		if (!Object.values(ENUMS.resetMode).includes(resetMode)) {
 			return {
-				message: `Invalid clear mode "${clearMode}"`,
+				message: `Invalid reset mode "${resetMode}"`,
 				status: CustomCommandStatus.Failure,
 			};
 		}
 		system.run(() => {
-			KillsManager.clear(clearMode);
-			DeathsManager.clear(clearMode);
+			KillsManager.clear(resetMode);
+			DeathsManager.clear(resetMode);
 			let whoWasRemoved: string;
-			if (clearMode === ENUMS.resetMode.all) {
+			if (resetMode === ENUMS.resetMode.all) {
 				whoWasRemoved = "everyone";
-			} else if (clearMode === ENUMS.resetMode.mobs) {
+			} else if (resetMode === ENUMS.resetMode.mobs) {
 				whoWasRemoved = "all mobs";
-			} else if (clearMode === ENUMS.resetMode.players) {
+			} else if (resetMode === ENUMS.resetMode.players) {
 				whoWasRemoved = "all players";
 			} else {
 				whoWasRemoved = "nobody?";
+			}
+			if (resetMode === ENUMS.resetMode.all || resetMode === ENUMS.resetMode.mobs) {
+				MobManager.nametags.clear();
 			}
 			handleCommandResult(origin, {
 				message: `Removed ${whoWasRemoved} from kills and deaths scoreboards`,

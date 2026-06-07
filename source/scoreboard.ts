@@ -2,13 +2,13 @@ import {
 	DisplaySlotId,
 	type Entity,
 	EntityTypes,
-	type Player,
+	Player,
+	ScoreboardIdentityType,
 	type ScoreboardObjective,
 	type ScoreboardScoreInfo,
-	system,
 	world,
 } from "@minecraft/server";
-import { removeNamespaceAndUnderscores } from "./bootifulTypeId";
+import { removeNamespaceAndUnderscores } from "./bootifulTypeIds";
 import { DYNAMIC_PROPERTIES } from "./dynamicProperties";
 import { ENUMS } from "./enums";
 
@@ -146,7 +146,7 @@ export class ScoreboardManager {
 			this.objective.addScore(entity, 1);
 			return;
 		}
-		if (entity.typeId === "minecraft:player") {
+		if (entity instanceof Player) {
 			this.objective.addScore(entity, 1);
 		} else {
 			MobManager.incrementMobScore(this.objective, entity);
@@ -170,15 +170,13 @@ export class ScoreboardManager {
 		}
 		if (clearMode === ENUMS.resetMode.players) {
 			for (const p of this.objective.getParticipants()) {
-				const entity = p.getEntity();
-				if (entity?.typeId === "minecraft:player") {
+				if (p.type === ScoreboardIdentityType.Player) {
 					this.objective.removeParticipant(p);
 				}
 			}
 		} else if (clearMode === ENUMS.resetMode.mobs) {
 			for (const p of this.objective.getParticipants()) {
-				const entity = p.getEntity();
-				if (entity?.typeId !== "minecraft:player") {
+				if (p.type !== ScoreboardIdentityType.Player) {
 					this.objective.removeParticipant(p);
 				}
 			}
@@ -186,7 +184,6 @@ export class ScoreboardManager {
 			for (const p of this.objective.getParticipants()) {
 				this.objective.removeParticipant(p);
 			}
-			world.sendMessage("Should be here?");
 		}
 	}
 }
@@ -219,7 +216,6 @@ class ScoreboardMobManager {
 				instanceNum = data.instanceCount + 1;
 			}
 		}
-		this.saveDataToWorld();
 		return {
 			instanceCount: instanceNum,
 			nameTag: entity.nameTag,
@@ -230,62 +226,81 @@ class ScoreboardMobManager {
 		return `${data.nameTag}${data.instanceCount > 1 ? `(${data.instanceCount})` : ""}`;
 	}
 
-	private getDisplayNames(entity: Entity, mobInclusionMode: string): string[] | undefined {
+	private getDisplayNames(entity: Entity, mobInclusionMode: string, onScoreboard: ScoreboardObjective): { displayName?: string, mobName?: string, oldNameTagScore?: number | undefined } {
 		const modes = ENUMS.mobInclusionMode;
 		if (
 			mobInclusionMode === modes.disabled ||
 			mobInclusionMode === modes.help ||
 			!Object.values(modes).includes(mobInclusionMode)
 		) {
-			return undefined;
+			return {};
 		}
 		if (mobInclusionMode === modes.typeId) {
-			return [removeNamespaceAndUnderscores(entity.typeId, true, true)];
+			return {
+				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true)
+			};
 		}
 		const returnArr: string[] = [];
-		let entityDisplayName = this.nametags.get(entity.id);
-		// New nametagged entity detected
-		if (
-			entity.isValid &&
-			((entityDisplayName === undefined && entity.nameTag.length !== 0) ||
-				entityDisplayName?.nameTag !== entity.nameTag)
-		) {
-			// In case the mob had a different nametag previously
-			this.nametags.delete(entity.id);
-			entityDisplayName = this.addNewDisplayName(entity);
-			if (entityDisplayName) {
-				this.nametags.set(entity.id, entityDisplayName);
+		let scoreboardNameTag = this.nametags.get(entity.id);
+		let oldNameTag: number | undefined;
+		if (entity.isValid) {
+			// Mobs name has been changed from previous display name
+			if (scoreboardNameTag !== undefined && scoreboardNameTag.nameTag !== entity.nameTag) {
+				const oldDisplayName: string = this.getNumberedNametag(scoreboardNameTag)
+				oldNameTag = onScoreboard.getScore(oldDisplayName);
+				onScoreboard.removeParticipant(oldDisplayName);
+				this.nametags.delete(entity.id);
+				scoreboardNameTag = undefined;
+			}
+			if (scoreboardNameTag === undefined && entity.nameTag.length !== 0) {
+				scoreboardNameTag = this.addNewDisplayName(entity);
+				if (scoreboardNameTag) {
+					this.nametags.set(entity.id, scoreboardNameTag);
+					this.saveDataToWorld();
+				}
 			}
 		}
-		// Mob doesnt have a nametag frfr this time
-		if (!entityDisplayName) {
+		// Mob doesnt have a nametag
+		if (!scoreboardNameTag) {
 			if (mobInclusionMode === modes.nameTagOnly) {
-				return undefined;
+				return {};
 			}
-			return [removeNamespaceAndUnderscores(entity.typeId, true, true)];
+			return {
+				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true)
+			}
 		}
-		returnArr.push(this.getNumberedNametag(entityDisplayName));
+
+		returnArr.push(this.getNumberedNametag(scoreboardNameTag));
 		if (mobInclusionMode === modes.allNameTaggedIncluded) {
-			returnArr.push(removeNamespaceAndUnderscores(entity.typeId, true, true));
+			return {
+				displayName: this.getNumberedNametag(scoreboardNameTag),
+				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true),
+				oldNameTagScore: oldNameTag
+			}
 		}
-		return returnArr;
+		return {
+				displayName: this.getNumberedNametag(scoreboardNameTag),
+				oldNameTagScore: oldNameTag
+		}
 	}
 
 	public incrementMobScore(scoreboard: ScoreboardObjective, entity: Entity): void {
-		const entityDisplayNames = this.getDisplayNames(
+		const result = this.getDisplayNames(
 			entity,
 			DYNAMIC_PROPERTIES.mobInclusionMode.value,
+			scoreboard
 		);
-		if (entityDisplayNames === undefined) {
-			return;
+
+		if (result.displayName) {
+			scoreboard.addScore(result.displayName, 1 + (result.oldNameTagScore ?? 0));
 		}
-		for (const name of entityDisplayNames) {
-			scoreboard.addScore(name, 1);
+		if (result.mobName) {
+			scoreboard.addScore(result.mobName, 1);
 		}
 	}
 
 	public shouldTrackEntity(entity: Entity): boolean {
-		if (entity.typeId === "minecraft:player") {
+		if (entity instanceof Player) {
 			return true;
 		}
 		const modes = ENUMS.mobInclusionMode;
@@ -347,18 +362,15 @@ class ScoreboardMobManager {
 
 // What if a mob has the same name as one of the mob categories?
 const BOOTIFUL_ENTITY_TYPEIDS: string[] = [];
-system.run(() => {
-	const types = EntityTypes.getAll();
-	for (const t of types) {
-		BOOTIFUL_ENTITY_TYPEIDS.push(removeNamespaceAndUnderscores(t.id, true, true));
-	}
-});
-
 // ScoreboardManager constructor needs to be in system.run()
 export let KillsManager: ScoreboardManager;
 export let DeathsManager: ScoreboardManager;
 export const MobManager = new ScoreboardMobManager("fkt:mob_manager");
 world.afterEvents.worldLoad.subscribe(() => {
+	const types = EntityTypes.getAll();
+	for (const t of types) {
+		BOOTIFUL_ENTITY_TYPEIDS.push(removeNamespaceAndUnderscores(t.id, true, true));
+	}
 	KillsManager = new ScoreboardManager("fkt:kills_property", "FKT_Kills", "Kills");
 	DeathsManager = new ScoreboardManager("fkt:deaths_property", "FKT_Deaths", "Deaths");
 	MobManager.loadDataFromWorld();

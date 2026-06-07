@@ -150,7 +150,7 @@ const MOB_INCLUSION_HELP_MESSAGE: string = `
 §7If a mob has a name tag, scoreboard increments both their name tag and mob type
 
 §rall_nametaggedseperated:
-§7If a mob has a name tag, scoreboard only increments their name tag
+§7If a mob has a name tag, scoreboard only increments their name tag, otherwise increments their mob type
 
 §rdisabled:
 §7Disables all mob kill tracking
@@ -163,7 +163,7 @@ const MOB_INCLUSION_HELP_MESSAGE: string = `
 
 §rtypeid:
 §7Scoreboard increments mob type only
-===================
+§r===================
 `.trim();
 
 COMMANDS.push({

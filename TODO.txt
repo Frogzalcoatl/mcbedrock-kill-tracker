@@ -1,3 +1,1 @@
-What happens if mob name is set to smth like "Zombies" before any zombies have killed.
-
 Figure out tnt kills.

@@ -1,9 +1,11 @@
 import {
 	DisplaySlotId,
 	type Entity,
+	EntityTypes,
 	type Player,
 	type ScoreboardObjective,
 	type ScoreboardScoreInfo,
+	system,
 	world,
 } from "@minecraft/server";
 import { removeNamespaceAndUnderscores } from "./bootifulTypeId";
@@ -172,6 +174,10 @@ class ScoreboardMobManager {
 			return undefined;
 		}
 		let instanceNum = 1;
+		// To avoid a situation where a mob with the same nametag as a typeid gets merged
+		if (BOOTIFUL_ENTITY_TYPEIDS.includes(entity.nameTag)) {
+			instanceNum++;
+		}
 		for (const [, data] of this.nametags) {
 			if (data.nameTag === entity.nameTag && data.instanceCount >= instanceNum) {
 				instanceNum = data.instanceCount + 1;
@@ -274,8 +280,11 @@ class ScoreboardMobManager {
 	}
 
 	public saveDataToWorld(): void {
-		const valuesAsStr: string = JSON.stringify(this);
-		world.setDynamicProperty(this.dynamicProperty, valuesAsStr);
+		const mapAsArr = Array.from(this.nametags.entries());
+		const dataToSave = {
+			nametags: mapAsArr,
+		};
+		world.setDynamicProperty(this.dynamicProperty, JSON.stringify(dataToSave));
 	}
 
 	public loadDataFromWorld(): Map<string, ScoreboardNameTag> {
@@ -284,15 +293,30 @@ class ScoreboardMobManager {
 			this.saveDataToWorld();
 			return this.nametags;
 		}
-		const parsedData = JSON.parse(dynamicPropertyData);
-		if (parsedData instanceof ScoreboardMobManager) {
-			this.nametags = parsedData.nametags;
-		} else {
+		// Since JSON.parse will throw an error if the data is invalid
+		try {
+			const parsedData = JSON.parse(dynamicPropertyData);
+			if (parsedData && Array.isArray(parsedData.nametags)) {
+				this.nametags = new Map<string, ScoreboardNameTag>(parsedData.nametags);
+			} else {
+				this.saveDataToWorld();
+			}
+		} catch (e) {
+			world.sendMessage(`§cFailed to load ScoreboardMobManager dynamic data: ${e}`);
 			this.saveDataToWorld();
 		}
 		return this.nametags;
 	}
 }
+
+// What if a mob has the same name as one of the mob categories?
+const BOOTIFUL_ENTITY_TYPEIDS: string[] = [];
+system.run(() => {
+	const types = EntityTypes.getAll();
+	for (const t of types) {
+		BOOTIFUL_ENTITY_TYPEIDS.push(removeNamespaceAndUnderscores(t.id, true, true));
+	}
+});
 
 // ScoreboardManager constructor needs to be in system.run()
 export let KillsManager: ScoreboardManager;

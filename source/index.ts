@@ -5,6 +5,7 @@ import {
 	EntityComponentTypes,
 	EntityDamageCause,
 	type EntityTameableComponent,
+	system,
 	world,
 } from "@minecraft/server";
 import { DYNAMIC_PROPERTIES } from "./dynamicProperties";
@@ -20,12 +21,8 @@ interface HitData {
 // Key is playerid
 const HIT_TRACKER = new Map<string, HitData>();
 
-function trackHitBetween(damagingEntity: Entity, hitEntity: Entity): void {
-	HIT_TRACKER.set(damagingEntity.id, {
-		entityId: hitEntity.id,
-		timestamp: Date.now(),
-	});
-	HIT_TRACKER.set(hitEntity.id, {
+function trackHitBetween(damagingEntity: Entity, hurtEntity: Entity): void {
+	HIT_TRACKER.set(hurtEntity.id, {
 		entityId: damagingEntity.id,
 		timestamp: Date.now(),
 	});
@@ -98,3 +95,13 @@ world.afterEvents.playerSpawn.subscribe((e) => {
 	KillsManager.initScore(e.player);
 	DeathsManager.initScore(e.player);
 });
+
+system.runInterval(() => {
+	const now = Date.now();
+	const cooldownMs = DYNAMIC_PROPERTIES.hitCooldown.valueMs;
+	for (const [entityId, hitData] of HIT_TRACKER.entries()) {
+		if (now - hitData.timestamp > cooldownMs) {
+			HIT_TRACKER.delete(entityId);
+		}
+	}
+}, 1200); // Clean in case of despawned mobs

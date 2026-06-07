@@ -18,11 +18,12 @@ export function removeNamespaceAndUnderscores(
 	if (capitalize) {
 		for (let i = 0; i < words.length; i++) {
 			const word = words[i];
-			if (word === undefined) {
+			// !word is true for undefined and empty strings
+			if (!word) {
 				continue;
 			}
 			const firstLetter = word[0];
-			if (firstLetter === undefined) {
+			if (!firstLetter) {
 				continue;
 			}
 			words[i] = `${firstLetter.toUpperCase()}${word.slice(1)}`;

@@ -46,10 +46,12 @@ export class ScoreboardManager {
 			// biome-ignore lint/style/useNamingConvention: Same as above
 			Sidebar: false,
 		};
-		for (const displayId of Object.values(DisplaySlotId)) {
-			const objectiveOnDisplay = world.scoreboard.getObjectiveAtDisplaySlot(displayId);
-			if (objectiveOnDisplay && objectiveOnDisplay.objective.id === this.objective.id) {
-				isOnDisplay[displayId] = true;
+		if (this.objective.isValid) {
+			for (const displayId of Object.values(DisplaySlotId)) {
+				const objectiveOnDisplay = world.scoreboard.getObjectiveAtDisplaySlot(displayId);
+				if (objectiveOnDisplay && objectiveOnDisplay.objective.id === this.objective.id) {
+					isOnDisplay[displayId] = true;
+				}
 			}
 		}
 		let scoresBackup: ScoreboardScoreInfo[],
@@ -69,7 +71,11 @@ export class ScoreboardManager {
 			}
 		} else {
 			scoresBackup = [];
-			objectiveIdBackup = this.defaultObjectiveId;
+			const dynamicPropertyData = world.getDynamicProperty(this.dynamicPropertyId);
+			objectiveIdBackup =
+				typeof dynamicPropertyData === "string"
+					? dynamicPropertyData
+					: this.defaultObjectiveId;
 			displayNameBackup = this.defaultDisplayName;
 		}
 		this.objective = world.scoreboard.addObjective(
@@ -155,6 +161,32 @@ export class ScoreboardManager {
 			for (const p of world.getAllPlayers()) {
 				this.objective.addScore(p, 0);
 			}
+		}
+	}
+
+	public clear(clearMode: string): void {
+		if (!this.objective.isValid) {
+			return;
+		}
+		if (clearMode === ENUMS.resetMode.players) {
+			for (const p of this.objective.getParticipants()) {
+				const entity = p.getEntity();
+				if (entity?.typeId === "minecraft:player") {
+					this.objective.removeParticipant(p);
+				}
+			}
+		} else if (clearMode === ENUMS.resetMode.mobs) {
+			for (const p of this.objective.getParticipants()) {
+				const entity = p.getEntity();
+				if (entity?.typeId !== "minecraft:player") {
+					this.objective.removeParticipant(p);
+				}
+			}
+		} else if (clearMode === ENUMS.resetMode.all) {
+			for (const p of this.objective.getParticipants()) {
+				this.objective.removeParticipant(p);
+			}
+			world.sendMessage("Should be here?");
 		}
 	}
 }

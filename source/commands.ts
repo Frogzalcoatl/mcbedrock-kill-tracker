@@ -14,7 +14,6 @@ import { ENUMS } from "./enums";
 import {
 	DeathsManager,
 	KillsManager,
-	MobManager,
 	type ResultWithMessage,
 	type ScoreboardManager,
 } from "./scoreboard";
@@ -147,10 +146,10 @@ const MOB_INCLUSION_HELP_MESSAGE: string = `
 §7*Players are always incremented by their username
 
 §rall_nametaggedincluded:
-§7If a mob has a name tag, scoreboard increments both their name tag and mob type
+§7If mob has a name tag, scoreboard increments both their name tag and mob type. If mob has no namtag, only increments their mob type.
 
 §rall_nametaggedseperated:
-§7If a mob has a name tag, scoreboard only increments their name tag, otherwise increments their mob type
+§7If mob has a name tag, scoreboard only increments their name tag. If mob has no nametag, increments their mob type.
 
 §rdisabled:
 §7Disables all mob kill tracking
@@ -159,10 +158,10 @@ const MOB_INCLUSION_HELP_MESSAGE: string = `
 §7Displays this help message
 
 §rnametagonly:
-§7Only if a mob has a name tag, scoreboard increments their name tag
+§7Scoreboard increments by name tag only.
 
 §rtypeid:
-§7Scoreboard increments mob type only
+§7Scoreboard increments by mob type only
 §r===================
 `.trim();
 
@@ -202,32 +201,42 @@ COMMANDS.push({
 });
 
 COMMANDS.push({
-	callback: (origin: CustomCommandOrigin): CustomCommandResult | undefined => {
+	callback: (origin: CustomCommandOrigin, clearMode: string): CustomCommandResult | undefined => {
+		if (!Object.values(ENUMS.resetMode).includes(clearMode)) {
+			return {
+				message: `Invalid clear mode "${clearMode}"`,
+				status: CustomCommandStatus.Failure,
+			};
+		}
 		system.run(() => {
-			for (const p of KillsManager.objective.getParticipants()) {
-				const entity = p.getEntity();
-				if (entity?.typeId !== "minecraft:player") {
-					KillsManager.objective.removeParticipant(p);
-				}
-				MobManager.nametags.clear();
-				MobManager.saveDataToWorld();
-			}
-			for (const p of DeathsManager.objective.getParticipants()) {
-				const entity = p.getEntity();
-				if (entity?.typeId !== "minecraft:player") {
-					DeathsManager.objective.removeParticipant(p);
-				}
+			KillsManager.clear(clearMode);
+			DeathsManager.clear(clearMode);
+			let whoWasRemoved: string;
+			if (clearMode === ENUMS.resetMode.all) {
+				whoWasRemoved = "everyone";
+			} else if (clearMode === ENUMS.resetMode.mobs) {
+				whoWasRemoved = "all mobs";
+			} else if (clearMode === ENUMS.resetMode.players) {
+				whoWasRemoved = "all players";
+			} else {
+				whoWasRemoved = "nobody?";
 			}
 			handleCommandResult(origin, {
-				message: "Removed all non players from kills and deaths scoreboards",
+				message: `Removed ${whoWasRemoved} from kills and deaths scoreboards`,
 				status: CustomCommandStatus.Success,
 			});
 		});
 		return undefined;
 	},
 	command: {
-		description: "Clear non players from kills and deaths scoreboards.",
-		name: "fkt:clearmobs",
+		description: "reset participants on kills and deaths scoreboards.",
+		mandatoryParameters: [
+			{
+				name: "fkt:resetMode",
+				type: CustomCommandParamType.Enum,
+			},
+		],
+		name: "fkt:reset",
 		permissionLevel: CommandPermissionLevel.GameDirectors,
 	},
 });
@@ -239,6 +248,7 @@ system.beforeEvents.startup.subscribe((e) => {
 		"fkt:mobInclusionMode",
 		Object.values(ENUMS.mobInclusionMode),
 	);
+	e.customCommandRegistry.registerEnum("fkt:resetMode", Object.values(ENUMS.resetMode));
 	for (const c of COMMANDS) {
 		e.customCommandRegistry.registerCommand(c.command, c.callback);
 	}

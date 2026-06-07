@@ -15,4 +15,9 @@ export const ENUMS = {
 		deaths: "deaths",
 		kills: "kills",
 	},
+	resetMode: {
+		all: "all",
+		mobs: "mobs",
+		players: "players",
+	},
 };

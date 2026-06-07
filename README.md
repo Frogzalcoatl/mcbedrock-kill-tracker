@@ -37,7 +37,7 @@ Scoreboards are a feature built into Minecraft and can be accessed using the /sc
 ```
 /scoreboard objectives setdisplay sidebar FKT_Kills
 ```
-(Given you havent changed the kills objective name from the default FKT_Kills)
+(Given you havent changed the kills objective id from the default FKT_Kills)
 
 For more information on scoreboards, see [Microsoft's Official Documentation](https://learn.microsoft.com/en-us/minecraft/creator/documents/scoreboardintroduction?view=minecraft-bedrock-stable).
 

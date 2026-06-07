@@ -8,16 +8,18 @@ export function removeNamespaceAndUnderscores(
 	capitalize: boolean,
 	pluralize: boolean,
 ): string {
-	// Weird ah typeid
+	// Weird ah typeids
 	if (str === "minecraft:zombie_villager_v2") {
 		str = "minecraft:zombie_villager";
+	} else if (str === "minecraft:villager_v2") {
+		str = "minecraft:villager";
 	}
 	// man men moment
-	if (str === "minecraft:enderman" && pluralize) {
+	else if (str === "minecraft:enderman" && pluralize) {
 		str = "minecraft:endermen";
 	}
 	// Why hasnt this been changed?
-	if (str === "minecraft:zombie_pigman") {
+	else if (str === "minecraft:zombie_pigman") {
 		str = "minecraft:zombie_piglin";
 	}
 	const namespaceColonIndex: number = str.indexOf(":");

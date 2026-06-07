@@ -242,13 +242,9 @@ COMMANDS.push({
 });
 
 system.beforeEvents.startup.subscribe((e) => {
-	e.customCommandRegistry.registerEnum("fkt:objective", Object.values(ENUMS.objective));
-	e.customCommandRegistry.registerEnum("fkt:edit", Object.values(ENUMS.edit));
-	e.customCommandRegistry.registerEnum(
-		"fkt:mobInclusionMode",
-		Object.values(ENUMS.mobInclusionMode),
-	);
-	e.customCommandRegistry.registerEnum("fkt:resetMode", Object.values(ENUMS.resetMode));
+	for (const [key, values] of Object.entries(ENUMS)) {
+		e.customCommandRegistry.registerEnum(`fkt:${key}`, Object.values(values) as string[]);
+	}
 	for (const c of COMMANDS) {
 		e.customCommandRegistry.registerCommand(c.command, c.callback);
 	}

@@ -23,7 +23,6 @@ world.afterEvents.worldLoad.subscribe(() => {
 	} else {
 		DYNAMIC_PROPERTIES.hitCooldown.valueMs = combatTimeData;
 	}
-
 	const mobInclusionModeData = world.getDynamicProperty(DYNAMIC_PROPERTIES.mobInclusionMode.id);
 	if (
 		typeof mobInclusionModeData !== "string" ||

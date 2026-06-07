@@ -19,16 +19,14 @@ export class ScoreboardManager {
 	public objective: ScoreboardObjective;
 	constructor(
 		public dynamicPropertyId: string,
-		private defaultObjectiveId: string,
-		private defaultDisplayName: string,
+		public readonly defaultObjectiveId: string,
+		public readonly defaultDisplayName: string,
 	) {
 		let objectiveId = world.getDynamicProperty(this.dynamicPropertyId);
-
 		if (typeof objectiveId !== "string") {
 			world.setDynamicProperty(this.dynamicPropertyId, defaultObjectiveId);
 			objectiveId = defaultObjectiveId;
 		}
-
 		this.objective =
 			world.scoreboard.getObjective(objectiveId) ??
 			world.scoreboard.addObjective(objectiveId, defaultDisplayName);
@@ -72,15 +70,17 @@ export class ScoreboardManager {
 			objectiveIdBackup = this.defaultObjectiveId;
 			displayNameBackup = this.defaultDisplayName;
 		}
-
 		this.objective = world.scoreboard.addObjective(
 			reloadOptions?.newObjectiveId ?? objectiveIdBackup,
 			reloadOptions?.newDisplayName ?? displayNameBackup,
 		);
 		for (const score of scoresBackup) {
-			this.objective.setScore(score.participant, score.score);
+			this.objective.setScore(
+				// Non entity participants (name tags) become invalid after removing the objective, but display names are still accessible.
+				score.participant.isValid ? score.participant : score.participant.displayName,
+				score.score,
+			);
 		}
-
 		for (const displayId of Object.values(DisplaySlotId)) {
 			if (isOnDisplay[displayId]) {
 				world.scoreboard.setObjectiveAtDisplaySlot(displayId, {
@@ -88,7 +88,6 @@ export class ScoreboardManager {
 				});
 			}
 		}
-
 		return {
 			bool: true,
 			message: `${this.objective.id} reload successful`,
@@ -103,7 +102,6 @@ export class ScoreboardManager {
 			};
 		}
 		const result: ResultWithMessage = this.reloadScoreboard({ newDisplayName: newName });
-
 		return {
 			bool: result.bool,
 			message: result.bool
@@ -124,7 +122,6 @@ export class ScoreboardManager {
 		if (result.bool) {
 			world.setDynamicProperty(this.dynamicPropertyId, this.objective.id);
 		}
-
 		return {
 			bool: result.bool,
 			message: result.bool
@@ -158,8 +155,8 @@ export class ScoreboardManager {
 
 interface ScoreboardNameTag {
 	nameTag: string;
-	// If mobs have the same nametag, number is appended
-	instanceNum: number;
+	// If mobs have the same nametag. instanceCounts greater than 1 are appended Ex: "Name(2)"
+	instanceCount: number;
 }
 
 class ScoreboardMobManager {
@@ -176,19 +173,19 @@ class ScoreboardMobManager {
 		}
 		let instanceNum = 1;
 		for (const [, data] of this.nametags) {
-			if (data.nameTag.startsWith(entity.nameTag) && data.instanceNum >= instanceNum) {
-				instanceNum = data.instanceNum + 1;
+			if (data.nameTag === entity.nameTag && data.instanceCount >= instanceNum) {
+				instanceNum = data.instanceCount + 1;
 			}
 		}
 		this.saveDataToWorld();
 		return {
-			instanceNum: instanceNum,
+			instanceCount: instanceNum,
 			nameTag: entity.nameTag,
 		};
 	}
 
 	private getNumberedNametag(data: ScoreboardNameTag): string {
-		return `${data.nameTag}${data.instanceNum > 1 ? `(${data.instanceNum})` : ""}`;
+		return `${data.nameTag}${data.instanceCount > 1 ? `(${data.instanceCount})` : ""}`;
 	}
 
 	private getDisplayNames(entity: Entity, mobInclusionMode: string): string[] | undefined {
@@ -203,10 +200,8 @@ class ScoreboardMobManager {
 		if (mobInclusionMode === modes.typeId) {
 			return [removeNamespaceAndUnderscores(entity.typeId, true, true)];
 		}
-
 		const returnArr: string[] = [];
 		let entityDisplayName = this.nametags.get(entity.id);
-
 		// New nametagged entity detected
 		if (
 			entity.isValid &&
@@ -220,7 +215,6 @@ class ScoreboardMobManager {
 				this.nametags.set(entity.id, entityDisplayName);
 			}
 		}
-
 		// Mob doesnt have a nametag frfr this time
 		if (!entityDisplayName) {
 			if (mobInclusionMode === modes.nameTagOnly) {
@@ -228,7 +222,6 @@ class ScoreboardMobManager {
 			}
 			return [removeNamespaceAndUnderscores(entity.typeId, true, true)];
 		}
-
 		returnArr.push(this.getNumberedNametag(entityDisplayName));
 		if (mobInclusionMode === modes.allNameTaggedIncluded) {
 			returnArr.push(removeNamespaceAndUnderscores(entity.typeId, true, true));
@@ -271,7 +264,7 @@ class ScoreboardMobManager {
 		}
 	}
 
-	public removeEntityName(entity: Entity): void {
+	public removeEntityFromKillsObjective(entity: Entity): void {
 		const nameTagData = this.nametags.get(entity.id);
 		if (nameTagData === undefined) {
 			return;
@@ -301,6 +294,7 @@ class ScoreboardMobManager {
 	}
 }
 
+// ScoreboardManager constructor needs to be in system.run()
 export let KillsManager: ScoreboardManager;
 export let DeathsManager: ScoreboardManager;
 export const MobManager = new ScoreboardMobManager("fkt:mob_manager");
@@ -309,7 +303,7 @@ world.afterEvents.worldLoad.subscribe(() => {
 	DeathsManager = new ScoreboardManager("fkt:deaths_property", "FKT_Deaths", "Deaths");
 	MobManager.loadDataFromWorld();
 	for (const p of world.getAllPlayers()) {
-		KillsManager.objective.addScore(p, 0);
-		DeathsManager.objective.addScore(p, 0);
+		KillsManager.initScore(p);
+		DeathsManager.initScore(p);
 	}
 });

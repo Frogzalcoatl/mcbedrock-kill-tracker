@@ -1,7 +1,7 @@
 export const ENUMS = {
 	edit: {
-		display: "display",
-		objective: "objective",
+		setDisplay: "setdisplay",
+		setObjective: "setobjective",
 	},
 	mobInclusionMode: {
 		allNameTaggedIncluded: "all_nametaggedincluded",

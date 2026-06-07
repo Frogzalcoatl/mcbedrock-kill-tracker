@@ -14,7 +14,6 @@ export function removeNamespaceAndUnderscores(
 	}
 	const namespaceColonIndex: number = str.indexOf(":");
 	str = str.slice(namespaceColonIndex + 1);
-
 	const words = str.split("_");
 	if (capitalize) {
 		for (let i = 0; i < words.length; i++) {
@@ -26,7 +25,7 @@ export function removeNamespaceAndUnderscores(
 			if (firstLetter === undefined) {
 				continue;
 			}
-			words[i] = `${capitalize ? firstLetter.toUpperCase() : firstLetter}${word.slice(1)}`;
+			words[i] = `${firstLetter.toUpperCase()}${word.slice(1)}`;
 		}
 	}
 	if (pluralize) {

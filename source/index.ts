@@ -12,21 +12,20 @@ import { DeathsManager, KillsManager, MobManager } from "./scoreboard";
 import "./commands";
 
 // Last player in combat with, timestamp of last hit
-interface CombatData {
+interface HitData {
 	entityId: string;
 	timestamp: number;
 }
 
 // Key is playerid
-const COMBAT_TRACKER = new Map<string, CombatData>();
+const HIT_TRACKER = new Map<string, HitData>();
 
 function trackHitBetween(damagingEntity: Entity, hitEntity: Entity): void {
-	COMBAT_TRACKER.set(damagingEntity.id, {
+	HIT_TRACKER.set(damagingEntity.id, {
 		entityId: hitEntity.id,
 		timestamp: Date.now(),
 	});
-
-	COMBAT_TRACKER.set(hitEntity.id, {
+	HIT_TRACKER.set(hitEntity.id, {
 		entityId: damagingEntity.id,
 		timestamp: Date.now(),
 	});
@@ -47,24 +46,22 @@ world.afterEvents.entityHurt.subscribe((e) => {
 });
 
 world.afterEvents.entityDie.subscribe((e) => {
-	// Clear mob nametag from scoreboard if applicable
-	MobManager.removeEntityName(e.deadEntity);
-
-	// selfDestruct means /kill
+	// Clear dead mob's nametag from kills scoreboard if applicable
+	MobManager.removeEntityFromKillsObjective(e.deadEntity);
+	// selfDestruct damage cause means /kill
 	if (
 		!MobManager.shouldTrackEntity(e.deadEntity) ||
 		e.damageSource.cause === EntityDamageCause.selfDestruct
 	) {
 		return;
 	}
-
 	// Deaths only count for players since theyre the only entities that respawn
 	if (e.deadEntity.typeId === "minecraft:player") {
 		DeathsManager.incrememntScore(e.deadEntity);
 	}
-
 	if (e.damageSource.damagingEntity) {
 		KillsManager.incrememntScore(e.damageSource.damagingEntity);
+		// getComponent throws errors if entity is not valid
 		if (e.damageSource.damagingEntity.isValid) {
 			// Tried to use tameable component but it doesnt seem to be working. Will leave this here anyways.
 			// Adds kill for pet owner if applicable
@@ -76,16 +73,14 @@ world.afterEvents.entityDie.subscribe((e) => {
 			return;
 		}
 	}
-
-	// If direct killer not found, resort to entity who hit dead entity last (if within cooldown)
-	const trackerData: CombatData | undefined = COMBAT_TRACKER.get(e.deadEntity.id);
+	// If direct killer not found, resort to hit tracker (if within cooldown)
+	const trackerData: HitData | undefined = HIT_TRACKER.get(e.deadEntity.id);
 	if (
 		!trackerData ||
 		trackerData.timestamp + DYNAMIC_PROPERTIES.hitCooldown.valueMs <= Date.now()
 	) {
 		return;
 	}
-
 	const killerId: string = trackerData.entityId;
 	const killer: Entity | undefined = world.getEntity(killerId);
 	if (!killer) {

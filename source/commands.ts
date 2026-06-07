@@ -19,11 +19,10 @@ import {
 	type ScoreboardManager,
 } from "./scoreboard";
 
-function handleCommandResult(origin: CustomCommandOrigin, result: ResultWithMessage): void {
+function handleCommandResult(origin: CustomCommandOrigin, result: CustomCommandResult): void {
 	if (!world.gameRules.sendCommandFeedback) {
 		return;
 	}
-
 	let player: Player | undefined;
 	if (origin.sourceEntity && origin.sourceEntity.typeId === "minecraft:player") {
 		player = origin.sourceEntity as Player;
@@ -31,7 +30,9 @@ function handleCommandResult(origin: CustomCommandOrigin, result: ResultWithMess
 		player = origin.initiator as Player;
 	}
 	if (player) {
-		player.sendMessage(`${result.bool ? "" : "§c"}${result.message}`);
+		player.sendMessage(
+			`${result.status === CustomCommandStatus.Success ? "" : "§c"}${result.message}`,
+		);
 	}
 }
 
@@ -46,10 +47,10 @@ COMMANDS.push({
 		_origin: CustomCommandOrigin,
 		cooldownSeconds?: number,
 	): CustomCommandResult | undefined => {
-		const combatTime = DYNAMIC_PROPERTIES.hitCooldown;
+		const hitCooldown = DYNAMIC_PROPERTIES.hitCooldown;
 		if (cooldownSeconds === undefined) {
 			return {
-				message: `Hit tracker cooldown currently set to ${combatTime.valueMs / 1000} second${combatTime.valueMs / 1000 === 1 ? "" : "s"}`,
+				message: `Hit tracker cooldown currently set to ${hitCooldown.valueMs / 1000} second${hitCooldown.valueMs / 1000 === 1 ? "" : "s"}`,
 				status: CustomCommandStatus.Success,
 			};
 		}
@@ -59,19 +60,16 @@ COMMANDS.push({
 				status: CustomCommandStatus.Failure,
 			};
 		}
-
-		const cooldownMs = Math.floor(cooldownSeconds * 1000);
-		combatTime.valueMs = cooldownMs;
-		cooldownSeconds = cooldownMs / 1000; // for rounding in return message
-		world.setDynamicProperty(combatTime.id, Math.floor(cooldownSeconds * 1000));
-
+		const cooldownMs = Math.round(cooldownSeconds * 1000);
+		hitCooldown.valueMs = cooldownMs;
+		world.setDynamicProperty(hitCooldown.id, cooldownMs);
+		cooldownSeconds = cooldownMs / 1000; // Make sure return message has 3 decimal places at most.
 		return {
 			message: `Set hit tracker cooldown to ${cooldownSeconds} second${cooldownSeconds === 1 ? "" : "s"}`,
 			status: CustomCommandStatus.Success,
 		};
 	},
 	command: {
-		cheatsRequired: true,
 		description: "Set hit tracker cooldown time (seconds).",
 		name: "fkt:setcooldown",
 		optionalParameters: [
@@ -91,8 +89,6 @@ COMMANDS.push({
 		edit: string,
 		newName: string,
 	): CustomCommandResult | undefined => {
-		let result: ResultWithMessage;
-
 		let scoreboardManager: ScoreboardManager;
 		if (objective === ENUMS.objective.kills) {
 			scoreboardManager = KillsManager;
@@ -104,11 +100,11 @@ COMMANDS.push({
 				status: CustomCommandStatus.Failure,
 			};
 		}
-
 		system.run(() => {
-			if (edit === ENUMS.edit.display) {
+			let result: ResultWithMessage;
+			if (edit === ENUMS.edit.setDisplay) {
 				result = scoreboardManager.setDisplayName(newName);
-			} else if (edit === ENUMS.edit.objective) {
+			} else if (edit === ENUMS.edit.setObjective) {
 				result = scoreboardManager.setId(newName);
 			} else {
 				result = {
@@ -118,9 +114,11 @@ COMMANDS.push({
 			}
 
 			// Cannot return a CustomCommandResult since above func needs to be run after a tick, not before.
-			handleCommandResult(origin, result);
+			handleCommandResult(origin, {
+				message: result.message,
+				status: result.bool ? CustomCommandStatus.Success : CustomCommandStatus.Failure,
+			});
 		});
-
 		return undefined;
 	},
 	command: {
@@ -139,7 +137,7 @@ COMMANDS.push({
 				type: CustomCommandParamType.String,
 			},
 		],
-		name: "fkt:setname",
+		name: "fkt:scoreboards",
 		permissionLevel: CommandPermissionLevel.GameDirectors,
 	},
 });
@@ -215,8 +213,8 @@ COMMANDS.push({
 				MobManager.saveDataToWorld();
 			}
 			handleCommandResult(origin, {
-				bool: true,
 				message: "Removed all non players from kills scoreboard",
+				status: CustomCommandStatus.Success,
 			});
 		});
 		return undefined;

@@ -212,8 +212,14 @@ COMMANDS.push({
 				MobManager.nametags.clear();
 				MobManager.saveDataToWorld();
 			}
+			for (const p of DeathsManager.objective.getParticipants()) {
+				const entity = p.getEntity();
+				if (entity?.typeId !== "minecraft:player") {
+					DeathsManager.objective.removeParticipant(p);
+				}
+			}
 			handleCommandResult(origin, {
-				message: "Removed all non players from kills scoreboard",
+				message: "Removed all non players from kills and deaths scoreboards",
 				status: CustomCommandStatus.Success,
 			});
 		});

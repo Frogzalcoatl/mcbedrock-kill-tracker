@@ -11,6 +11,8 @@ import {
 import { DYNAMIC_PROPERTIES } from "./dynamicProperties";
 import { DeathsManager, KillsManager, MobManager } from "./scoreboard";
 import "./commands";
+import { removeNamespaceAndUnderscores } from "./bootifulTypeId";
+import { ENUMS } from "./enums";
 
 // Last player in combat with, timestamp of last hit
 interface HitData {
@@ -52,9 +54,16 @@ world.afterEvents.entityDie.subscribe((e) => {
 	) {
 		return;
 	}
-	// Deaths only count for players since theyre the only entities that respawn
 	if (e.deadEntity.typeId === "minecraft:player") {
 		DeathsManager.incrememntScore(e.deadEntity);
+	} else if (
+		DYNAMIC_PROPERTIES.mobInclusionMode.value !== ENUMS.mobInclusionMode.nameTagOnly &&
+		DYNAMIC_PROPERTIES.mobInclusionMode.value !== ENUMS.mobInclusionMode.disabled
+	) {
+		DeathsManager.objective.addScore(
+			removeNamespaceAndUnderscores(e.deadEntity.typeId, true, true),
+			1,
+		);
 	}
 	if (e.damageSource.damagingEntity) {
 		KillsManager.incrememntScore(e.damageSource.damagingEntity);

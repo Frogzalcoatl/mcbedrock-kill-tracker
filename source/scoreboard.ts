@@ -6,6 +6,7 @@ import {
 	type ScoreboardScoreInfo,
 	world,
 } from "@minecraft/server";
+import { removeNamespaceAndUnderscores } from "./bootifulTypeId";
 import { DYNAMIC_PROPERTIES } from "./dynamicProperties";
 import { ENUMS } from "./enums";
 
@@ -54,6 +55,7 @@ export class ScoreboardManager {
 		let scoresBackup: ScoreboardScoreInfo[],
 			objectiveIdBackup: string,
 			displayNameBackup: string;
+		// isValid is false if user manuallay removes objective for whatever reason.
 		if (this.objective.isValid) {
 			scoresBackup = this.objective.getScores();
 			objectiveIdBackup = this.objective.id;
@@ -143,49 +145,31 @@ export class ScoreboardManager {
 	}
 
 	public initScore(player: Player): void {
-		if (!this.objective.isValid) {
+		if (this.objective.isValid) {
+			this.objective.addScore(player, 0);
+		} else {
 			this.reloadScoreboard();
+			for (const p of world.getAllPlayers()) {
+				this.objective.addScore(p, 0);
+			}
 		}
-		this.objective.addScore(player, 0);
 	}
 }
 
 interface ScoreboardNameTag {
 	nameTag: string;
-	// Number of §r appended
+	// If mobs have the same nametag, number is appended
 	instanceNum: number;
 }
 
 class ScoreboardMobManager {
 	// Key is entityId and value is their scoreboard display name.
-	// Appends additional §r if a duplicate name is found.
 	public nametags: Map<string, ScoreboardNameTag>;
 
 	constructor(public dynamicProperty: string) {
 		this.nametags = new Map<string, ScoreboardNameTag>();
 	}
 
-	public loadDataFromWorld(): Map<string, ScoreboardNameTag> {
-		const dynamicPropertyData = world.getDynamicProperty(this.dynamicProperty);
-		if (typeof dynamicPropertyData !== "string") {
-			this.saveDataToWorld();
-			return this.nametags;
-		}
-		const parsedData = JSON.parse(dynamicPropertyData);
-		if (parsedData instanceof ScoreboardMobManager) {
-			this.nametags = parsedData.nametags;
-		} else {
-			this.saveDataToWorld();
-		}
-		return this.nametags;
-	}
-
-	public saveDataToWorld(): void {
-		const valuesAsStr: string = JSON.stringify(this);
-		world.setDynamicProperty(this.dynamicProperty, valuesAsStr);
-	}
-
-	// Determines how many §r need to be appended to the entity's nametag based on duplicate names in the scoreboard objective.
 	private addNewDisplayName(entity: Entity): ScoreboardNameTag | undefined {
 		if (!entity.isValid || entity.nameTag.length === 0) {
 			return undefined;
@@ -203,6 +187,10 @@ class ScoreboardMobManager {
 		};
 	}
 
+	private getNumberedNametag(data: ScoreboardNameTag): string {
+		return `${data.nameTag}${data.instanceNum > 1 ? `(${data.instanceNum})` : ""}`;
+	}
+
 	private getDisplayNames(entity: Entity, mobInclusionMode: string): string[] | undefined {
 		const modes = ENUMS.mobInclusionMode;
 		if (
@@ -213,16 +201,19 @@ class ScoreboardMobManager {
 			return undefined;
 		}
 		if (mobInclusionMode === modes.typeId) {
-			return [this.removeNamespaceAndUnderscores(entity.typeId, true, true)];
+			return [removeNamespaceAndUnderscores(entity.typeId, true, true)];
 		}
+
 		const returnArr: string[] = [];
 		let entityDisplayName = this.nametags.get(entity.id);
+
 		// New nametagged entity detected
 		if (
 			entity.isValid &&
 			((entityDisplayName === undefined && entity.nameTag.length !== 0) ||
 				entityDisplayName?.nameTag !== entity.nameTag)
 		) {
+			// In case the mob had a different nametag previously
 			this.nametags.delete(entity.id);
 			entityDisplayName = this.addNewDisplayName(entity);
 			if (entityDisplayName) {
@@ -230,16 +221,17 @@ class ScoreboardMobManager {
 			}
 		}
 
+		// Mob doesnt have a nametag frfr this time
 		if (!entityDisplayName) {
 			if (mobInclusionMode === modes.nameTagOnly) {
 				return undefined;
 			}
-			return [this.removeNamespaceAndUnderscores(entity.typeId, true, true)];
+			return [removeNamespaceAndUnderscores(entity.typeId, true, true)];
 		}
 
 		returnArr.push(this.getNumberedNametag(entityDisplayName));
 		if (mobInclusionMode === modes.allNameTaggedIncluded) {
-			returnArr.push(this.removeNamespaceAndUnderscores(entity.typeId, true, true));
+			returnArr.push(removeNamespaceAndUnderscores(entity.typeId, true, true));
 		}
 		return returnArr;
 	}
@@ -288,54 +280,24 @@ class ScoreboardMobManager {
 		this.nametags.delete(entity.id);
 	}
 
-	private isUppercase(charCode: number): boolean {
-		return charCode >= 65 && charCode <= 90;
+	public saveDataToWorld(): void {
+		const valuesAsStr: string = JSON.stringify(this);
+		world.setDynamicProperty(this.dynamicProperty, valuesAsStr);
 	}
 
-	// Capitalize param makes the first character of every word capital if true
-	private removeNamespaceAndUnderscores(
-		str: string,
-		capitalize: boolean,
-		pluralize: boolean,
-	): string {
-		const namespaceColonIndex: number = str.indexOf(":");
-		str = str.slice(namespaceColonIndex + 1);
-
-		const words = str.split("_");
-		if (capitalize) {
-			for (let i = 0; i < words.length; i++) {
-				const word = words[i];
-				if (word === undefined) {
-					continue;
-				}
-				const firstLetter = word[0];
-				if (firstLetter === undefined) {
-					continue;
-				}
-				words[i] =
-					`${capitalize ? firstLetter.toUpperCase() : firstLetter}${word.slice(1)}`;
-			}
+	public loadDataFromWorld(): Map<string, ScoreboardNameTag> {
+		const dynamicPropertyData = world.getDynamicProperty(this.dynamicProperty);
+		if (typeof dynamicPropertyData !== "string") {
+			this.saveDataToWorld();
+			return this.nametags;
 		}
-		if (pluralize) {
-			const lastWord = words[words.length - 1];
-			if (lastWord) {
-				if (
-					lastWord[lastWord.length - 1] === "s" ||
-					lastWord[lastWord.length - 1] === "S"
-				) {
-					words[words.length - 1] = `${lastWord}'`;
-				} else {
-					// Assume word is all caps if last letter is capital, and use a uppercase S.
-					words[words.length - 1] =
-						`${lastWord}${this.isUppercase(lastWord.charCodeAt(lastWord.length - 1)) ? "S" : "s"}`;
-				}
-			}
+		const parsedData = JSON.parse(dynamicPropertyData);
+		if (parsedData instanceof ScoreboardMobManager) {
+			this.nametags = parsedData.nametags;
+		} else {
+			this.saveDataToWorld();
 		}
-		return words.join(" ");
-	}
-
-	private getNumberedNametag(data: ScoreboardNameTag): string {
-		return `${data.nameTag}${data.instanceNum > 1 ? `(${data.instanceNum})` : ""}`;
+		return this.nametags;
 	}
 }
 

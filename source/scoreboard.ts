@@ -132,9 +132,13 @@ export class ScoreboardManager {
 		};
 	}
 
-	public incrememntScore(entity: Entity): void {
+	public incrememntScore(entity: Entity | string): void {
 		if (!this.objective.isValid) {
 			this.reloadScoreboard();
+		}
+		if (typeof entity === "string") {
+			this.objective.addScore(entity, 1);
+			return;
 		}
 		if (entity.typeId === "minecraft:player") {
 			this.objective.addScore(entity, 1);

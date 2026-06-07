@@ -194,7 +194,7 @@ COMMANDS.push({
 		};
 	},
 	command: {
-		description: "Include mobs on kills scoreboard",
+		description: "Include mobs on kills and deaths scoreboards.",
 		name: "fkt:mobinclusion",
 		optionalParameters: [{ name: "fkt:mobInclusionMode", type: CustomCommandParamType.Enum }],
 		permissionLevel: CommandPermissionLevel.GameDirectors,
@@ -226,7 +226,7 @@ COMMANDS.push({
 		return undefined;
 	},
 	command: {
-		description: "Clear non players from kills scoreboard",
+		description: "Clear non players from kills and deaths scoreboards.",
 		name: "fkt:clearmobs",
 		permissionLevel: CommandPermissionLevel.GameDirectors,
 	},

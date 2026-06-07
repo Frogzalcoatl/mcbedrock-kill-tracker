@@ -60,10 +60,7 @@ world.afterEvents.entityDie.subscribe((e) => {
 		DYNAMIC_PROPERTIES.mobInclusionMode.value !== ENUMS.mobInclusionMode.nameTagOnly &&
 		DYNAMIC_PROPERTIES.mobInclusionMode.value !== ENUMS.mobInclusionMode.disabled
 	) {
-		DeathsManager.objective.addScore(
-			removeNamespaceAndUnderscores(e.deadEntity.typeId, true, true),
-			1,
-		);
+		DeathsManager.incrememntScore(removeNamespaceAndUnderscores(e.deadEntity.typeId, true, true));
 	}
 	if (e.damageSource.damagingEntity) {
 		KillsManager.incrememntScore(e.damageSource.damagingEntity);

@@ -12,6 +12,14 @@ export function removeNamespaceAndUnderscores(
 	if (str === "minecraft:zombie_villager_v2") {
 		str = "minecraft:zombie_villager";
 	}
+	// man men moment
+	if (str === "minecraft:enderman" && pluralize) {
+		str = "minecraft:endermen";
+	}
+	// Why hasnt this been changed?
+	if (str === "minecraft:zombie_pigman") {
+		str = "minecraft:zombie_piglin";
+	}
 	const namespaceColonIndex: number = str.indexOf(":");
 	str = str.slice(namespaceColonIndex + 1);
 	const words = str.split("_");

@@ -9,12 +9,14 @@ import {
 	system,
 	world,
 } from "@minecraft/server";
+import { DYNAMIC_PROPERTIES } from "./dynamicProperties";
+import { ENUMS } from "./enums";
 import {
+	DeathsManager,
+	KillsManager,
+	MobManager,
 	type ResultWithMessage,
-	SCOREBOARD_DATA,
-	type ScoreboardData,
-	setScoreboardDisplayName,
-	setScoreboardObjectiveName,
+	type ScoreboardManager,
 } from "./scoreboard";
 
 function handleCommandResult(origin: CustomCommandOrigin, result: ResultWithMessage): void {
@@ -35,54 +37,42 @@ function handleCommandResult(origin: CustomCommandOrigin, result: ResultWithMess
 
 const COMMANDS: {
 	command: CustomCommand;
-	// biome-ignore lint/suspicious/noExplicitAny: Is easier fr. Also is what mojang uses
+	// biome-ignore lint/suspicious/noExplicitAny: Used any[] to match type expected by Bedrock API
 	callback: (origin: CustomCommandOrigin, ...args: any[]) => CustomCommandResult | undefined;
 }[] = [];
 
-// If last hit occurred in less time, counts as kill
-export let CombatTimeMs: number = 7000;
-export const COMBAT_TIME_DYNAMIC_PROPERTY = "fkt:combat_cooldown_ms";
-
-world.afterEvents.worldLoad.subscribe(() => {
-	const dynamicProperty = world.getDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY);
-	if (typeof dynamicProperty !== "number") {
-		world.setDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY, CombatTimeMs);
-	} else {
-		CombatTimeMs = dynamicProperty;
-	}
-});
-
 COMMANDS.push({
 	callback: (
-		origin: CustomCommandOrigin,
+		_origin: CustomCommandOrigin,
 		cooldownSeconds?: number,
 	): CustomCommandResult | undefined => {
+		const combatTime = DYNAMIC_PROPERTIES.hitCooldown;
 		if (cooldownSeconds === undefined) {
 			return {
-				message: `Combat cooldown currently set to ${CombatTimeMs / 1000} second${CombatTimeMs / 1000 === 1 ? "" : "s"}`,
+				message: `Hit tracker cooldown currently set to ${combatTime.valueMs / 1000} second${combatTime.valueMs / 1000 === 1 ? "" : "s"}`,
 				status: CustomCommandStatus.Success,
 			};
 		}
 		if (cooldownSeconds < 0) {
 			return {
-				message: "Combat cooldown must be at least 0 seconds",
+				message: "Hit tacker cooldown must be at least 0 seconds",
 				status: CustomCommandStatus.Failure,
 			};
 		}
 
 		const cooldownMs = Math.floor(cooldownSeconds * 1000);
-		CombatTimeMs = cooldownMs;
+		combatTime.valueMs = cooldownMs;
 		cooldownSeconds = cooldownMs / 1000; // for rounding in return message
-		world.setDynamicProperty(COMBAT_TIME_DYNAMIC_PROPERTY, Math.floor(cooldownSeconds * 1000));
+		world.setDynamicProperty(combatTime.id, Math.floor(cooldownSeconds * 1000));
 
 		return {
-			message: `Set combat cooldown to ${cooldownSeconds} second${cooldownSeconds === 1 ? "" : "s"}`,
+			message: `Set hit tracker cooldown to ${cooldownSeconds} second${cooldownSeconds === 1 ? "" : "s"}`,
 			status: CustomCommandStatus.Success,
 		};
 	},
 	command: {
 		cheatsRequired: true,
-		description: "Set hit cooldown time (seconds).",
+		description: "Set hit tracker cooldown time (seconds).",
 		name: "fkt:setcooldown",
 		optionalParameters: [
 			{
@@ -94,15 +84,6 @@ COMMANDS.push({
 	},
 });
 
-enum CustomCommandObjective {
-	Kills = "kills",
-	Deaths = "deaths",
-}
-enum CustomCommandEdit {
-	SetObjective = "setobjective",
-	SetDisplay = "setdisplay",
-}
-
 COMMANDS.push({
 	callback: (
 		origin: CustomCommandOrigin,
@@ -112,11 +93,11 @@ COMMANDS.push({
 	): CustomCommandResult | undefined => {
 		let result: ResultWithMessage;
 
-		let scoreboardData: ScoreboardData;
-		if (objective === CustomCommandObjective.Kills) {
-			scoreboardData = SCOREBOARD_DATA.kills;
-		} else if (objective === CustomCommandObjective.Deaths) {
-			scoreboardData = SCOREBOARD_DATA.deaths;
+		let scoreboardManager: ScoreboardManager;
+		if (objective === ENUMS.objective.kills) {
+			scoreboardManager = KillsManager;
+		} else if (objective === ENUMS.objective.deaths) {
+			scoreboardManager = DeathsManager;
 		} else {
 			return {
 				message: `Invalid objective argument "${objective}"`,
@@ -125,10 +106,10 @@ COMMANDS.push({
 		}
 
 		system.run(() => {
-			if (edit === CustomCommandEdit.SetDisplay) {
-				result = setScoreboardDisplayName(scoreboardData, newName);
-			} else if (edit === CustomCommandEdit.SetObjective) {
-				result = setScoreboardObjectiveName(scoreboardData, newName);
+			if (edit === ENUMS.edit.display) {
+				result = scoreboardManager.setDisplayName(newName);
+			} else if (edit === ENUMS.edit.objective) {
+				result = scoreboardManager.setId(newName);
 			} else {
 				result = {
 					bool: false,
@@ -143,7 +124,6 @@ COMMANDS.push({
 		return undefined;
 	},
 	command: {
-		cheatsRequired: true,
 		description: "Edit scoreboard properties.",
 		mandatoryParameters: [
 			{
@@ -159,14 +139,102 @@ COMMANDS.push({
 				type: CustomCommandParamType.String,
 			},
 		],
-		name: "fkt:config",
+		name: "fkt:setname",
+		permissionLevel: CommandPermissionLevel.GameDirectors,
+	},
+});
+
+const MOB_INCLUSION_HELP_MESSAGE: string = `
+===================
+§7*Players are always incremented by their username
+
+§rall_nametaggedincluded:
+§7If a mob has a name tag, scoreboard increments both their name tag and mob type
+
+§rall_nametaggedseperated:
+§7If a mob has a name tag, scoreboard only increments their name tag
+
+§rdisabled:
+§7Disables all mob kill tracking
+
+§rhelp:
+§7Displays this help message
+
+§rnametagonly:
+§7Only if a mob has a name tag, scoreboard increments their name tag
+
+§rtypeid:
+§7Scoreboard increments mob type only
+===================
+`.trim();
+
+COMMANDS.push({
+	callback: (_origin: CustomCommandOrigin, value?: string): CustomCommandResult | undefined => {
+		if (value === undefined) {
+			return {
+				message: `Mob inclusion currently set to ${DYNAMIC_PROPERTIES.mobInclusionMode.value}`,
+				status: CustomCommandStatus.Success,
+			};
+		}
+		if (!Object.values(ENUMS.mobInclusionMode).includes(value)) {
+			return {
+				message: `Invalid mob inclusion mode "${value}"`,
+				status: CustomCommandStatus.Failure,
+			};
+		}
+		if (value === ENUMS.mobInclusionMode.help) {
+			return {
+				message: MOB_INCLUSION_HELP_MESSAGE,
+				status: CustomCommandStatus.Success,
+			};
+		}
+		DYNAMIC_PROPERTIES.mobInclusionMode.value = value;
+		world.setDynamicProperty(DYNAMIC_PROPERTIES.mobInclusionMode.id, value);
+		return {
+			message: `Mob inclusion set to ${value}`,
+			status: CustomCommandStatus.Success,
+		};
+	},
+	command: {
+		description: "Include mobs on kills scoreboard",
+		name: "fkt:mobinclusion",
+		optionalParameters: [{ name: "fkt:mobInclusionMode", type: CustomCommandParamType.Enum }],
+		permissionLevel: CommandPermissionLevel.GameDirectors,
+	},
+});
+
+COMMANDS.push({
+	callback: (origin: CustomCommandOrigin): CustomCommandResult | undefined => {
+		system.run(() => {
+			for (const p of KillsManager.objective.getParticipants()) {
+				const entity = p.getEntity();
+				if (entity?.typeId !== "minecraft:player") {
+					KillsManager.objective.removeParticipant(p);
+				}
+				MobManager.nametags.clear();
+				MobManager.saveDataToWorld();
+			}
+			handleCommandResult(origin, {
+				bool: true,
+				message: "Removed all non players from kills scoreboard",
+			});
+		});
+		return undefined;
+	},
+	command: {
+		description: "Clear non players from kills scoreboard",
+		name: "fkt:clearmobs",
 		permissionLevel: CommandPermissionLevel.GameDirectors,
 	},
 });
 
 system.beforeEvents.startup.subscribe((e) => {
-	e.customCommandRegistry.registerEnum("fkt:objective", Object.values(CustomCommandObjective));
-	e.customCommandRegistry.registerEnum("fkt:edit", Object.values(CustomCommandEdit));
+	e.customCommandRegistry.registerEnum("fkt:objective", Object.values(ENUMS.objective));
+	e.customCommandRegistry.registerEnum("fkt:edit", Object.values(ENUMS.edit));
+	e.customCommandRegistry.registerEnum(
+		"fkt:mobInclusionMode",
+		Object.values(ENUMS.mobInclusionMode),
+	);
 	for (const c of COMMANDS) {
 		e.customCommandRegistry.registerCommand(c.command, c.callback);
 	}

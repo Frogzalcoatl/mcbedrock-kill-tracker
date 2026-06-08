@@ -1,10 +1,10 @@
 const IRREGULAR_PLURALS = {
 	"minecraft:cod": "cod",
-	"minecraft:fox": "foxes",
 	"minecraft:enderman": "endermen",
+	"minecraft:fox": "foxes",
+	"minecraft:nautilus": "nautilus",
 	"minecraft:parched": "parched",
 	"minecraft:pufferfish": "pufferfish",
-	"minecraft:nautilus": "nautilus",
 	"minecraft:salmon": "salmon",
 	"minecraft:sheep": "sheep",
 	"minecraft:silverfish": "silverfish",
@@ -14,14 +14,14 @@ const IRREGULAR_PLURALS = {
 	"minecraft:villager_v2": "villagers",
 	"minecraft:witch": "witches",
 	"minecraft:wolf": "wolves",
-	"minecraft:zombie_villager_v2": "zombie_villagers",
 	"minecraft:zombie_nautilus": "zombie_nautilus",
-	"minecraft:zombie_pigman": "zombie_piglins"
-}
+	"minecraft:zombie_pigman": "zombie_piglins",
+	"minecraft:zombie_villager_v2": "zombie_villagers",
+};
 
 function isUppercase(char: string | undefined): boolean {
 	if (char === undefined) return false;
-	return char === char.toUpperCase() && char !== char.toLowerCase()
+	return char === char.toUpperCase() && char !== char.toLowerCase();
 }
 
 // Capitalize param makes the first character of every word capital if true

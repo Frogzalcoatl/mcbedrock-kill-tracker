@@ -56,7 +56,7 @@ COMMANDS.push({
 		}
 		if (cooldownSeconds < 0) {
 			return {
-				message: "Hit tacker cooldown must be at least 0 seconds",
+				message: "Hit tracker cooldown must be at least 0 seconds",
 				status: CustomCommandStatus.Failure,
 			};
 		}

@@ -18,20 +18,26 @@ export interface ResultWithMessage {
 }
 
 export class ScoreboardManager {
-	public objective: ScoreboardObjective;
+	private _objective: ScoreboardObjective | undefined;
 	constructor(
-		public dynamicPropertyId: string,
+		public readonly dynamicPropertyId: string,
 		public readonly defaultObjectiveId: string,
 		public readonly defaultDisplayName: string,
-	) {
+	) {}
+
+	public get objective(): ScoreboardObjective {
+		if (this._objective?.isValid) {
+			return this._objective;
+		}
 		let objectiveId = world.getDynamicProperty(this.dynamicPropertyId);
 		if (typeof objectiveId !== "string") {
-			world.setDynamicProperty(this.dynamicPropertyId, defaultObjectiveId);
-			objectiveId = defaultObjectiveId;
+			world.setDynamicProperty(this.dynamicPropertyId, this.defaultObjectiveId);
+			objectiveId = this.defaultObjectiveId;
 		}
-		this.objective =
+		this._objective =
 			world.scoreboard.getObjective(objectiveId) ??
-			world.scoreboard.addObjective(objectiveId, defaultDisplayName);
+			world.scoreboard.addObjective(objectiveId, this.defaultDisplayName);
+		return this._objective;
 	}
 
 	private reloadScoreboard(reloadOptions?: {
@@ -78,7 +84,7 @@ export class ScoreboardManager {
 					: this.defaultObjectiveId;
 			displayNameBackup = this.defaultDisplayName;
 		}
-		this.objective = world.scoreboard.addObjective(
+		this._objective = world.scoreboard.addObjective(
 			reloadOptions?.newObjectiveId ?? objectiveIdBackup,
 			reloadOptions?.newDisplayName ?? displayNameBackup,
 		);
@@ -226,7 +232,11 @@ class ScoreboardMobManager {
 		return `${data.nameTag}${data.instanceCount > 1 ? `(${data.instanceCount})` : ""}`;
 	}
 
-	private getDisplayNames(entity: Entity, mobInclusionMode: string, onScoreboard: ScoreboardObjective): { displayName?: string, mobName?: string, oldNameTagScore?: number | undefined } {
+	private getDisplayNames(
+		entity: Entity,
+		mobInclusionMode: string,
+		onScoreboard: ScoreboardObjective,
+	): { displayName?: string; mobName?: string; oldNameTagScore?: number | undefined } {
 		const modes = ENUMS.mobInclusionMode;
 		if (
 			mobInclusionMode === modes.disabled ||
@@ -237,16 +247,15 @@ class ScoreboardMobManager {
 		}
 		if (mobInclusionMode === modes.typeId) {
 			return {
-				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true)
+				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true),
 			};
 		}
-		const returnArr: string[] = [];
 		let scoreboardNameTag = this.nametags.get(entity.id);
 		let oldNameTag: number | undefined;
 		if (entity.isValid) {
 			// Mobs name has been changed from previous display name
 			if (scoreboardNameTag !== undefined && scoreboardNameTag.nameTag !== entity.nameTag) {
-				const oldDisplayName: string = this.getNumberedNametag(scoreboardNameTag)
+				const oldDisplayName: string = this.getNumberedNametag(scoreboardNameTag);
 				oldNameTag = onScoreboard.getScore(oldDisplayName);
 				onScoreboard.removeParticipant(oldDisplayName);
 				this.nametags.delete(entity.id);
@@ -266,29 +275,27 @@ class ScoreboardMobManager {
 				return {};
 			}
 			return {
-				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true)
-			}
+				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true),
+			};
 		}
-
-		returnArr.push(this.getNumberedNametag(scoreboardNameTag));
 		if (mobInclusionMode === modes.allNameTaggedIncluded) {
 			return {
 				displayName: this.getNumberedNametag(scoreboardNameTag),
 				mobName: removeNamespaceAndUnderscores(entity.typeId, true, true),
-				oldNameTagScore: oldNameTag
-			}
+				oldNameTagScore: oldNameTag,
+			};
 		}
 		return {
-				displayName: this.getNumberedNametag(scoreboardNameTag),
-				oldNameTagScore: oldNameTag
-		}
+			displayName: this.getNumberedNametag(scoreboardNameTag),
+			oldNameTagScore: oldNameTag,
+		};
 	}
 
 	public incrementMobScore(scoreboard: ScoreboardObjective, entity: Entity): void {
 		const result = this.getDisplayNames(
 			entity,
 			DYNAMIC_PROPERTIES.mobInclusionMode.value,
-			scoreboard
+			scoreboard,
 		);
 
 		if (result.displayName) {
@@ -306,7 +313,7 @@ class ScoreboardMobManager {
 		const modes = ENUMS.mobInclusionMode;
 		switch (DYNAMIC_PROPERTIES.mobInclusionMode.value) {
 			case modes.allNameTaggedIncluded:
-			case modes.allNameTaggedSeperated:
+			case modes.allNameTaggedSeparated:
 			case modes.typeId:
 				return true;
 			case modes.nameTagOnly: {
@@ -362,17 +369,14 @@ class ScoreboardMobManager {
 
 // What if a mob has the same name as one of the mob categories?
 const BOOTIFUL_ENTITY_TYPEIDS: string[] = [];
-// ScoreboardManager constructor needs to be in system.run()
-export let KillsManager: ScoreboardManager;
-export let DeathsManager: ScoreboardManager;
+export const KillsManager = new ScoreboardManager("fkt:kills_property", "FKT_Kills", "Kills");
+export const DeathsManager = new ScoreboardManager("fkt:deaths_property", "FKT_Deaths", "Deaths");
 export const MobManager = new ScoreboardMobManager("fkt:mob_manager");
 world.afterEvents.worldLoad.subscribe(() => {
 	const types = EntityTypes.getAll();
 	for (const t of types) {
 		BOOTIFUL_ENTITY_TYPEIDS.push(removeNamespaceAndUnderscores(t.id, true, true));
 	}
-	KillsManager = new ScoreboardManager("fkt:kills_property", "FKT_Kills", "Kills");
-	DeathsManager = new ScoreboardManager("fkt:deaths_property", "FKT_Deaths", "Deaths");
 	MobManager.loadDataFromWorld();
 	for (const p of world.getAllPlayers()) {
 		KillsManager.initScore(p);

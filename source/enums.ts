@@ -5,7 +5,7 @@ export const ENUMS = {
 	},
 	mobInclusionMode: {
 		allNameTaggedIncluded: "all_nametaggedincluded",
-		allNameTaggedSeperated: "all_nametaggedseperated",
+		allNameTaggedSeparated: "all_nametaggedseparated",
 		disabled: "disabled",
 		help: "help",
 		nameTagOnly: "nametagonly",

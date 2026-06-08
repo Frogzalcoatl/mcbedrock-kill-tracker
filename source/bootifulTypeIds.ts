@@ -36,7 +36,12 @@ export function removeNamespaceAndUnderscores(
 			if (str === id) {
 				str = plural;
 				irregularPlural = true;
+				break;
 			}
+		}
+		if (!irregularPlural) {
+			// Assume str is all caps if last letter is capital, and use a uppercase S.
+			str = `${str}${isUppercase(str[str.length - 1]) ? "S" : "s"}`;
 		}
 	}
 	// Namespace is already removed if str is reassigned to an irregular plural
@@ -46,8 +51,8 @@ export function removeNamespaceAndUnderscores(
 			str = str.slice(namespaceColonIndex + 1);
 		}
 	}
-	const words = str.split("_");
 	if (capitalize) {
+		const words = str.split("_");
 		for (let i = 0; i < words.length; i++) {
 			const word = words[i];
 			// !word is true for undefined and empty strings
@@ -60,16 +65,7 @@ export function removeNamespaceAndUnderscores(
 			}
 			words[i] = `${firstLetter.toUpperCase()}${word.slice(1)}`;
 		}
+		str = words.join(" ");
 	}
-	if (pluralize && !irregularPlural) {
-		const lastWord = words[words.length - 1];
-		if (lastWord) {
-			if (lastWord[lastWord.length - 1] !== "s" && lastWord[lastWord.length - 1] !== "S") {
-				// Assume word is all caps if last letter is capital, and use a uppercase S.
-				words[words.length - 1] =
-					`${lastWord}${isUppercase(lastWord[lastWord.length - 1]) ? "S" : "s"}`;
-			}
-		}
-	}
-	return words.join(" ");
+	return str;
 }

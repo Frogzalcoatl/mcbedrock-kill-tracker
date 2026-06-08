@@ -40,8 +40,8 @@ export function removeNamespaceAndUnderscores(
 			}
 		}
 		if (!irregularPlural) {
-			// Assume word is all caps if last letter is capital, and use a uppercase S.
-			str = `${str}${isUppercase(str[str.length - 1]) ? "S" : "s"}`
+			// Assume str is all caps if last letter is capital, and use a uppercase S.
+			str = `${str}${isUppercase(str[str.length - 1]) ? "S" : "s"}`;
 		}
 	}
 	// Namespace is already removed if str is reassigned to an irregular plural
